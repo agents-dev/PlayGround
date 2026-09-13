@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Worms Armageddon — Browser Clone</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%AA%B1%3C/text%3E%3C/svg%3E" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="app">
+  <header id="hud-top">
+    <div class="logo">🪱 WORMS <span>ARMAGEDDON</span> <em>browser edition</em></div>
+    <div class="top-stats">
+      <div id="wind-box" title="Wind affects bazooka & grenade">💨 <span id="wind-val">0</span></div>
+      <div id="timer-box" title="Turn time left">⏱ <span id="timer-val">30</span>s</div>
+      <div id="turn-box" title="Whose turn">🎯 <span id="turn-val">—</span></div>
+    </div>
+  </header>
+
+  <div id="stage-wrap">
+    <canvas id="game" width="1280" height="720"></canvas>
+
+    <div id="menu" class="overlay">
+      <h1>🪱 WORMS ARMAGEDDON</h1>
+      <p class="sub">Turn-based artillery carnage · destructible terrain · wind · water deaths</p>
+      <div class="cards">
+        <div class="card"><b>Move</b><span>A / D or ← →</span></div>
+        <div class="card"><b>Aim</b><span>W / S or ↑ ↓ or mouse</span></div>
+        <div class="card"><b>Jump</b><span>J / Enter / double-tap move</span></div>
+        <div class="card"><b>Fire</b><span>hold SPACE or mouse, release</span></div>
+        <div class="card"><b>Weapons</b><span>1–5 or click panel</span></div>
+      </div>
+      <div class="row">
+        <label>Worms per team
+          <select id="opt-worms">
+            <option value="2">2</option>
+            <option value="3" selected>3</option>
+            <option value="4">4</option>
+          </select>
+        </label>
+        <label>Turn time
+          <select id="opt-time">
+            <option value="20">20s</option>
+            <option value="30" selected>30s</option>
+            <option value="45">45s</option>
+          </select>
+        </label>
+        <button id="btn-start">▶ START BATTLE</button>
+        <button id="btn-newmap" class="ghost">🎲 New map</button>
+      </div>
+      <p class="hint">Bazooka is wind-affected. Grenades bounce + 3s fuse. Dynamite = drop &amp; run. Bat = point-blank launch. Falling in the sea = instant drown. Explosions carve the island.</p>
+    </div>
+
+    <div id="gameover" class="overlay hidden">
+      <h1 id="go-title">🏆 Red wins!</h1>
+      <p id="go-sub" class="sub"></p>
+      <div class="row"><button id="btn-restart">↻ REMATCH</button></div>
+    </div>
+
+    <div id="toast"></div>
+  </div>
+
+  <footer id="hud-bottom">
+    <div id="weapons"></div>
+    <div id="teams"></div>
+  </footer>
+</div>
+<script src="game.js"></script>
+</body>
+</html>
