@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>STARCRAFT 3D — Neon Frontline RTS</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="app">
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Selection rectangle -->
+  <div id="selection-box" class="hidden"></div>
+
+  <!-- Top resource bar -->
+  <div id="topbar">
+    <div class="logo">✦ STARCRAFT <span>3D</span> <em>NEON FRONTLINE</em></div>
+    <div class="resources">
+      <div class="res" id="res-minerals" title="Minerals — harvested by SCVs from blue crystals">
+        <span class="icon mineral"></span><span id="minerals">50</span>
+      </div>
+      <div class="res" id="res-gas" title="Vespene Gas — harvested from green geysers (needs Refinery)">
+        <span class="icon gas"></span><span id="gas">0</span>
+      </div>
+      <div class="res" id="res-supply" title="Supply — build Supply Depots to raise the cap">
+        <span class="icon supply"></span><span id="supply">11/11</span>
+      </div>
+      <div class="res" id="res-kills" title="Enemy kills">☠ <span id="kills">0</span></div>
+      <div class="res" id="res-timer" title="Mission time">⏱ <span id="timer">00:00</span></div>
+    </div>
+    <div class="topbtns">
+      <button id="btn-help" title="Help (H)">?</button>
+      <button id="btn-mute" title="Mute (M)">🔊</button>
+      <button id="btn-speed" title="Game speed (1x/2x)">1×</button>
+      <button id="btn-camera" title="Jump to base (Space)">⌂</button>
+    </div>
+  </div>
+
+  <!-- Objectives / announcements -->
+  <div id="announce" class="hidden"></div>
+  <div id="objective">
+    <strong>◈ OBJECTIVE</strong><span id="objective-text">Destroy the Swarm Hive cluster in the north-east.</span>
+  </div>
+
+  <!-- Right command panel -->
+  <div id="command-panel">
+    <div id="minimap-wrap">
+      <canvas id="minimap" width="220" height="220"></canvas>
+      <div class="minimap-label">TAC-MAP — click to jump</div>
+    </div>
+    <div id="selection-info">
+      <div id="sel-title">No selection</div>
+      <div id="sel-portrait"></div>
+      <div id="sel-stats"></div>
+      <div id="sel-hp"></div>
+    </div>
+    <div id="command-grid"></div>
+    <div id="build-queue"></div>
+  </div>
+
+  <!-- Bottom hint bar -->
+  <div id="hintbar">
+    <span><b>Drag-LMB</b> select</span><span><b>RMB</b> move / attack</span><span><b>A</b> attack-move</span>
+    <span><b>WASD</b> camera</span><span><b>Wheel</b> zoom</span><span><b>Q/E</b> rotate</span>
+    <span><b>1-3</b> control groups · <b>Ctrl+1-3</b> set</span>
+  </div>
+
+  <!-- Start menu -->
+  <div id="menu-overlay">
+    <div class="menu-card">
+      <div class="menu-kicker">A BROWSER RTS TRIBUTE</div>
+      <h1>STARCRAFT <span>3D</span></h1>
+      <h2>NEON FRONTLINE</h2>
+      <p class="menu-desc">
+        Command the <b class="blue">Terran Expeditionary Force</b> against the
+        <b class="red">Swarm</b>. Harvest crystals &amp; gas, raise depots &amp; war factories,
+        mass Marines, Tanks, Wraiths &amp; Battlecruisers — and raze the Hive before the Swarm overruns you.
+      </p>
+      <div class="difficulty">
+        <button data-diff="recruit" class="diff">RECRUIT</button>
+        <button data-diff="veteran" class="diff active">VETERAN</button>
+        <button data-diff="nightmare" class="diff">NIGHTMARE</button>
+      </div>
+      <button id="btn-start">▶ &nbsp;LAUNCH MISSION</button>
+      <div class="menu-controls">
+        <div><b>LMB drag</b> — box select &nbsp;·&nbsp; <b>RMB</b> — move / gather / attack</div>
+        <div><b>A + click</b> — attack move &nbsp;·&nbsp; <b>S</b> — stop &nbsp;·&nbsp; <b>H</b> — hold</div>
+        <div><b>B</b> — build menu (with worker selected) &nbsp;·&nbsp; <b>Esc</b> — cancel</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- End screen -->
+  <div id="end-overlay" class="hidden">
+    <div class="menu-card">
+      <h1 id="end-title">VICTORY</h1>
+      <p id="end-stats"></p>
+      <button id="btn-restart">↻ &nbsp;PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <!-- Help modal -->
+  <div id="help-overlay" class="hidden">
+    <div class="menu-card small">
+      <h1>FIELD MANUAL</h1>
+      <div class="help-grid">
+        <div><b>Goal</b><br/>Destroy every Swarm structure (Hatcheries, Spires, Sunkens). Lose if you have no buildings and no workers.</div>
+        <div><b>Economy</b><br/>SCVs harvest <span class="blue">minerals (+5/trip)</span> and <span class="green">gas (+4/trip, needs Refinery)</span>. Right-click a crystal/geyser, then right-click your Command Center area to auto-return (auto by default).</div>
+        <div><b>Buildings (select SCV → B)</b><br/>⛽ Refinery (75⚙) · 🏠 Depot +8 supply (100⚙) · 🪖 Barracks (150⚙) · 🏭 Factory (200⚙+100⛽) · ✈ Starport (250⚙+150⛽) · 🔫 Turret (100⚙)</div>
+        <div><b>Army</b><br/>Barracks: Marine (50⚙) · Factory: Siege Tank (150⚙+50⛽) · Starport: Wraith (150⚙+75⛽), Battlecruiser (400⚙+250⛽). Air units fly over ground &amp; can't be hit by melee.</div>
+        <div><b>Tips</b><br/>Keep SCVs pumping early. 1 Barracks → Factory → Starport. Turrets guard ramps. Attack-move (A) into the red zone. Control groups win wars.</div>
+      </div>
+      <button id="btn-close-help">CLOSE</button>
+    </div>
+  </div>
+
+  <!-- Build placement banner -->
+  <div id="placement-banner" class="hidden">Placing <b id="placement-name"></b> — <b>LMB</b> confirm · <b>RMB / Esc</b> cancel</div>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
