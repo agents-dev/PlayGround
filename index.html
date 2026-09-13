@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Worms 3D — Turn-based Artillery Mayhem</title>
+<link rel="icon" href="data:image/svg+xml,%F0%9F%AA%B1" />
+<link rel="stylesheet" href="style.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app">
+  <canvas id="scene"></canvas>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div id="topbar">
+      <div id="team-a" class="team-card red"><span class="dot"></span><span class="tname">Red</span><span class="tscore"></span></div>
+      <div id="turn-banner">
+        <div id="turn-text">Red's turn</div>
+        <div id="timer-wrap"><div id="timer-bar"></div><span id="timer-text">45</span></div>
+        <div id="wind"><span id="wind-arrow">➤</span><span id="wind-text">0</span></div>
+      </div>
+      <div id="team-b" class="team-card blue"><span class="dot"></span><span class="tname">Blue</span><span class="tscore"></span></div>
+    </div>
+
+    <div id="worm-tags"></div>
+
+    <div id="bottombar">
+      <div id="weapons"></div>
+      <div id="action-area">
+        <div id="aim-readout"><span id="aim-angle">∠ 45°</span><span id="aim-dir">➤ 0°</span></div>
+        <div id="power-wrap" class="hidden">
+          <div id="power-label">POWER — release SPACE to fire</div>
+          <div id="power-track"><div id="power-fill"></div></div>
+        </div>
+        <div id="hint">WASD move · Arrows aim · hold SPACE fire / tap jump · drag orbit · wheel zoom</div>
+      </div>
+      <div id="turn-controls">
+        <button id="btn-skip" class="ghost-btn" title="Skip turn">Skip ⏭</button>
+        <button id="btn-menu" class="ghost-btn" title="Back to menu">Menu</button>
+      </div>
+    </div>
+
+    <div id="toast" class="hidden"></div>
+    <div id="teleport-hint" class="hidden">TELEPORT: click any land to beam there (Esc cancels)</div>
+  </div>
+
+  <!-- Menu -->
+  <div id="menu">
+    <div class="menu-card">
+      <h1>🪱 WORMS <span>3D</span></h1>
+      <p class="sub">Turn-based artillery mayhem on a sinking island</p>
+      <div class="row">
+        <label>Mode</label>
+        <div class="seg" id="mode-seg">
+          <button data-mode="ai" class="active">You vs AI</button>
+          <button data-mode="hotseat">Hotseat 2P</button>
+        </div>
+      </div>
+      <div class="row">
+        <label>Worms / team</label>
+        <div class="seg" id="count-seg">
+          <button data-n="2">2</button>
+          <button data-n="3" class="active">3</button>
+          <button data-n="4">4</button>
+        </div>
+      </div>
+      <div class="row">
+        <label>Island</label>
+        <div class="seg" id="island-seg">
+          <button data-seed="random" class="active">🎲 Random</button>
+          <button data-seed="1">Atoll</button>
+          <button data-seed="2">Peaks</button>
+          <button data-seed="3">Crater</button>
+        </div>
+      </div>
+      <button id="btn-start">START BATTLE →</button>
+      <div class="controls">
+        <div><b>WASD</b> move worm</div>
+        <div><b>← → ↑ ↓</b> aim bazooka / grenade / airstrike</div>
+        <div><b>HOLD SPACE</b> charge &amp; fire · <b>TAP SPACE</b> jump</div>
+        <div><b>1–6</b> weapons · <b>drag</b> orbit · <b>wheel</b> zoom</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game over -->
+  <div id="gameover" class="hidden">
+    <div class="menu-card">
+      <h1 id="winner-text">RED WINS!</h1>
+      <p class="sub" id="winner-sub"></p>
+      <button id="btn-rematch">REMATCH ↻</button>
+      <button id="btn-tomenu" class="secondary">Back to menu</button>
+    </div>
+  </div>
+
+  <div id="loading"><div class="spin"></div><div>loading battlefield…</div></div>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
