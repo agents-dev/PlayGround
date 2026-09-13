@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OpenAI-Hosted Sandboxes — Report Demo</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <p class="eyebrow">Agents API · Environments · openai_hosted</p>
+    <h1>OpenAI-Hosted Sandboxes</h1>
+    <p class="lede">
+      An OpenAI-hosted sandbox gives your agent a Linux workspace with Python, Node.js,
+      and command-line tools. OpenAI provisions and connects it; your app supplies the
+      task and retrieves the results. Working directory: <code>/workspace</code>.
+    </p>
+    <p class="links">
+      <a href="https://developers.openai.com/api/docs/guides/agents-api/environments/openai-hosted">Official doc</a>
+      <span aria-hidden="true">·</span>
+      <a href="https://developers.openai.com/api/docs/guides/agents-api/environments/files">Files &amp; artifacts</a>
+      <span aria-hidden="true">·</span>
+      <a href="https://developers.openai.com/api/docs/pricing#built-in-tools">Container pricing</a>
+    </p>
+  </header>
+
+  <main>
+    <section class="card" id="how-it-works">
+      <h2>How it works</h2>
+      <ol>
+        <li><strong>Configure:</strong> <code>environment.type = "openai_hosted"</code> + packages, setup commands, files, env, skills/plugins.</li>
+        <li><strong>Network:</strong> <code>enabled</code> (default) · <code>disabled</code> · <code>restricted</code> with 1–100 bare hostnames.</li>
+        <li><strong>Wait for <code>connected</code>:</strong> <code>provisioning</code> → <code>connected</code> (or <code>failed</code> with <code>environment.error</code>).</li>
+        <li><strong>Artifacts:</strong> files under <code>/workspace/outputs</code> are published as immutable artifacts at turn end.</li>
+        <li><strong>Lifetime:</strong> keep-alives sustain it; ~1h idle can delete it. Delete the session when done (retry <code>409</code>).</li>
+      </ol>
+    </section>
+
+    <section class="card" id="live-sim">
+      <h2>Live offline simulation — the doc's report example</h2>
+      <p>
+        Same task the doc sends to the hosted agent, executed locally with no API key:
+        sum <code>/workspace/amounts.csv</code> → write
+        <code>/workspace/outputs/summary.json</code> → read back to verify.
+        Expected artifact: <code>{ "total": 60 }</code>.
+      </p>
+      <div class="grid">
+        <label>amounts.csv
+          <textarea id="csv" rows="7" spellcheck="false">amount
+10
+20
+30</textarea>
+        </label>
+        <div>
+          <button id="run" type="button">Run local sandbox turn</button>
+          <button id="reset" type="button" class="ghost">Reset</button>
+          <pre id="out" aria-live="polite">{ "hint": "press Run" }</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="config">
+      <h2>Environment payload builder</h2>
+      <p>Builds the exact <code>POST /v1/agents/sessions</code> body from the doc. Nothing is sent.</p>
+      <div class="grid">
+        <label>network.access
+          <select id="net">
+            <option value="disabled" selected>disabled</option>
+            <option value="enabled">enabled</option>
+            <option value="restricted">restricted</option>
+          </select>
+        </label>
+        <label>model
+          <input id="model" value="gpt-6-astra" spellcheck="false" />
+        </label>
+      </div>
+      <pre id="payload"></pre>
+      <p id="validation" aria-live="polite"></p>
+    </section>
+
+    <section class="card" id="code">
+      <h2>Copy-paste API calls</h2>
+      <div class="tabs" role="tablist">
+        <button role="tab" data-tab="js" class="active" type="button">JavaScript</button>
+        <button role="tab" data-tab="py" type="button">Python</button>
+        <button role="tab" data-tab="sh" type="button">cURL</button>
+      </div>
+      <pre id="tab-js"><code>import OpenAI from "openai";
+const client = new OpenAI(); // OPENAI_API_KEY stays in your app terminal, never in the sandbox
+const stream = await client.beta.agents.sessions.create({
+  agent: { model: "gpt-6-astra" },
+  environment: {
+    type: "openai_hosted",
+    network: { access: "disabled" },
+    files: [{ type: "inline", path: "/workspace/amounts.csv", data: "YW1vdW50CjEwCjIwCjMwCg==" }],
+  },
+  input: "Use Python to sum the amount column in /workspace/amounts.csv. Write a JSON object with the total to /workspace/outputs/summary.json, then read it back to verify it.",
+  stream: true,
+});
+for await (const event of stream) console.log(event);
+// Save session.id, wait for agent.session.turn.completed,
+// list artifacts, download summary.json -&gt; { "total": 60 }. Delete the session.</code></pre>
+      <pre id="tab-py" hidden><code>from openai import OpenAI
+client = OpenAI()  # OPENAI_API_KEY stays outside the sandbox
+stream = client.beta.agents.sessions.create(
+    agent={"model": "gpt-6-astra"},
+    environment={
+        "type": "openai_hosted",
+        "network": {"access": "disabled"},
+        "files": [{"type": "inline", "path": "/workspace/amounts.csv",
+                   "data": "YW1vdW50CjEwCjIwCjMwCg=="}],
+    },
+    input=("Use Python to sum the amount column in /workspace/amounts.csv. "
+           "Write a JSON object with the total to /workspace/outputs/summary.json, "
+           "then read it back to verify it."),
+    stream=True,
+)
+with stream:
+    for event in stream:
+        print(event.model_dump_json())</code></pre>
+      <pre id="tab-sh" hidden><code>curl --no-buffer --fail-with-body https://api.openai.com/v1/agents/sessions \
+  -H "OpenAI-Beta: agents=v1" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent": {"model": "gpt-6-astra"},
+    "environment": {
+      "type": "openai_hosted",
+      "network": {"access": "disabled"},
+      "files": [{"type": "inline", "path": "/workspace/amounts.csv",
+                 "data": "YW1vdW50CjEwCjIwCjMwCg=="}]
+    },
+    "input": "Use Python to sum the amount column in /workspace/amounts.csv. Write a JSON object with the total to /workspace/outputs/summary.json, then read it back to verify it.",
+    "stream": true
+  }'</code></pre>
+      <p class="note">Runnable copies live in <code>examples/</code>. Troubleshooting: setup failure → check the environment-failure event; blocked request → check network/redirect hosts; live-file failure → confirm <code>connected</code>; <code>5xx</code> → retry with backoff and keep the request ID.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>Demo mirrors the official OpenAI-hosted sandboxes guide. Model + container usage billed per OpenAI pricing. This page runs fully offline.</p>
+  </footer>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

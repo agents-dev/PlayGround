@@ -1,0 +1,25 @@
+:root { color-scheme: light dark; --bg: #0f172a; --card: #ffffff; --ink: #0f172a; --muted: #475569; --line: #e2e8f0; --accent: #2563eb; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: #f1f5f9; color: var(--ink); }
+.hero { background: var(--bg); color: #f8fafc; padding: 3rem 1.25rem 2rem; text-align: center; }
+.eyebrow { text-transform: uppercase; letter-spacing: .12em; font-size: .75rem; color: #93c5fd; margin: 0 0 .5rem; }
+.hero h1 { margin: 0 0 .75rem; font-size: clamp(1.8rem, 4vw, 2.6rem); }
+.lede { max-width: 46rem; margin: 0 auto; color: #cbd5e1; }
+.lede code, li code, p code, pre code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.links a { color: #bfdbfe; }
+main { max-width: 58rem; margin: -1rem auto 3rem; padding: 0 1rem; display: grid; gap: 1rem; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: .9rem; padding: 1.25rem; box-shadow: 0 1px 8px rgba(15,23,42,.06); }
+h2 { margin-top: 0; font-size: 1.25rem; }
+.grid { display: grid; gap: 1rem; grid-template-columns: 1fr 1fr; }
+@media (max-width: 720px) { .grid { grid-template-columns: 1fr; } main { margin-top: .75rem; } }
+label { display: grid; gap: .5rem; font-weight: 600; }
+textarea, select, input { width: 100%; padding: .6rem; border: 1px solid var(--line); border-radius: .5rem; font: inherit; }
+button { background: var(--accent); color: #fff; border: 0; border-radius: .55rem; padding: .6rem 1rem; font-weight: 700; cursor: pointer; margin-right: .5rem; }
+button.ghost { background: transparent; color: var(--accent); outline: 1px solid var(--accent); }
+pre { background: #0b1220; color: #dbeafe; padding: .9rem; border-radius: .6rem; overflow: auto; white-space: pre-wrap; }
+#validation.ok { color: #15803d; } #validation.bad { color: #b91c1c; }
+.tabs { display: flex; gap: .5rem; margin-bottom: .75rem; }
+.tabs button { background: #e2e8f0; color: #0f172a; }
+.tabs button.active { background: var(--bg); color: #fff; }
+.note { color: var(--muted); }
+footer { text-align: center; color: var(--muted); padding: 0 1rem 2rem; }

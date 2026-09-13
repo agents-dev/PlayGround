@@ -1,0 +1,14 @@
+{
+  "name": "openai-hosted-sandbox-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Offline demo of OpenAI-hosted sandboxes (Agents API, environment.type=openai_hosted).",
+  "scripts": {
+    "test": "node --test tests/run-tests.mjs",
+    "start": "python3 -m http.server 8000"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
