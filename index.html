@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MiniCraft — Voxel Minecraft Clone</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%235cb531'/><rect y='10' width='16' height='6' fill='%2386632e'/></svg>" />
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="crosshair">+</div>
+
+  <div id="hotbar"></div>
+
+  <div id="info">
+    <span id="fps">60 fps</span> · <span id="pos">0, 0, 0</span> · <span id="sel-name"></span>
+  </div>
+
+  <div id="menu">
+    <h1>⛏️ MiniCraft</h1>
+    <p>A tiny Minecraft in one page.<br />No build step. Just open <code>index.html</code>.</p>
+    <button id="play">▶ Click to Play</button>
+    <div class="help">
+      <div><b>WASD</b> move · <b>Mouse</b> look</div>
+      <div><b>Space</b> jump · <b>F</b> fly · <b>Shift</b> sneak/down</div>
+      <div><b>Left click</b> break · <b>Right click</b> place</div>
+      <div><b>1–9 / wheel</b> select block</div>
+    </div>
+    <div class="row">
+      <button id="new-world" class="ghost">🌍 New world</button>
+      <button id="save-world" class="ghost">💾 Save</button>
+      <button id="reset-spawn" class="ghost">📍 Respawn</button>
+    </div>
+    <p class="tiny">Seed: <span id="seed-label"></span> · World 64×64 · Served statically</p>
+  </div>
+
+  <div id="toast"></div>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
