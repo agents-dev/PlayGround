@@ -1,0 +1,17 @@
+{
+  "name": "playground-openai-hosted-sandbox",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Run OpenAI-hosted sandboxes (Agents API, environment.type=openai_hosted)",
+  "scripts": {
+    "quickstart": "node examples/quickstart.mjs",
+    "report": "node examples/report.mjs"
+  },
+  "dependencies": {
+    "openai": "^7.15.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

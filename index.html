@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PlayGround — OpenAI-Hosted Sandboxes</title>
+<style>
+  :root { color-scheme: light dark; --bg:#0b0e14; --fg:#e6edf3; --mut:#9aa4b2; --acc:#2f81f7; --ok:#3fb950; --card:#161b22; --line:#30363d; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--fg); }
+  header, main, footer { max-width: 920px; margin: 0 auto; padding: 20px; }
+  header h1 { margin: 8px 0 4px; font-size: 28px; }
+  header p, .mut { color: var(--mut); }
+  .grid { display:grid; gap:16px; grid-template-columns: 1fr 1fr; }
+  @media (max-width:720px){ .grid{grid-template-columns:1fr;} }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+  .card h2 { margin:0 0 8px; font-size:18px; }
+  label { display:block; margin:8px 0 4px; font-weight:600; }
+  input, select, textarea, button { font: inherit; }
+  input, select, textarea { width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:#0d1117; color:var(--fg); }
+  button { background:var(--acc); color:#fff; border:0; border-radius:8px; padding:10px 14px; cursor:pointer; }
+  button.ghost { background:transparent; border:1px solid var(--line); color:var(--fg); }
+  pre { background:#0d1117; border:1px solid var(--line); border-radius:8px; padding:12px; overflow:auto; font-size:13px; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  #status { min-height:1.5em; font-weight:600; }
+  #status.ok { color: var(--ok); }
+  table { border-collapse:collapse; width:100%; font-size:14px; }
+  th, td { border:1px solid var(--line); padding:6px 8px; text-align:left; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  a { color: var(--acc); }
+</style>
+</head>
+<body>
+<header>
+  <div class="mut" id="eyebrow">Agents API &middot; environment.type = openai_hosted</div>
+  <h1>OpenAI-Hosted Sandbox Playground</h1>
+  <p>Local interactive mirror of the sandbox task: sum <code>amount</code> in <code>/workspace/amounts.csv</code>
+  and write <code>/workspace/outputs/summary.json</code>. Source:
+  <a href="https://developers.openai.com/api/docs/guides/agents-api/environments/openai-hosted">openai-hosted docs</a>.</p>
+  <div id="status" role="status" aria-live="polite">Ready.</div>
+</header>
+
+<main>
+  <div class="grid">
+    <section class="card" aria-label="Sandbox task simulator">
+      <h2>1. Run the task locally</h2>
+      <label for="amounts">amounts.csv (one amount per line, header optional)</label>
+      <textarea id="amounts" rows="5">amount
+10
+20
+30</textarea>
+      <label for="network">network.access</label>
+      <select id="network">
+        <option value="disabled" selected>disabled</option>
+        <option value="enabled">enabled</option>
+        <option value="restricted">restricted</option>
+      </select>
+      <div class="row">
+        <button id="run">Compute total</button>
+        <button id="reset" class="ghost" type="button">Reset</button>
+      </div>
+      <label for="output">/workspace/outputs/summary.json</label>
+      <pre id="output" data-testid="summary-output">{ "total": 60 }</pre>
+      <p class="mut">Expected for 10, 20, 30: <code>{ "total": 60 }</code></p>
+    </section>
+
+    <section class="card" aria-label="Session config">
+      <h2>2. Sandbox session config</h2>
+      <p class="mut">What the app sends when <code>OPENAI_API_KEY</code> is set. Key stays outside the sandbox.</p>
+      <pre id="config-preview"><code>{
+  "agent": { "model": "gpt-6-astra" },
+  "environment": {
+    "type": "openai_hosted",
+    "network": { "access": "disabled" },
+    "files": [
+      { "type": "inline", "path": "/workspace/amounts.csv", "data": "YW1vdW50CjEwCjIwCjMwCg==" }
+    ]
+  },
+  "input": "Sum amount in /workspace/amounts.csv. Write {total} to /workspace/outputs/summary.json, then read it back.",
+  "stream": true
+}</code></pre>
+      <h2>3. Run for real</h2>
+      <pre><code>export OPENAI_API_KEY="your-api-key"
+node examples/report.mjs
+python examples/report.py</code></pre>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px" aria-label="Lifecycle">
+    <h2>Lifecycle checklist</h2>
+    <table>
+      <tr><th>Step</th><th>What to look for</th></tr>
+      <tr><td>Stream events</td><td><code>agent.session.created</code> → save <code>session.id</code></td></tr>
+      <tr><td>Turn outcome</td><td><code>agent.session.turn.completed</code> (inspect items; completed ≠ every tool succeeded)</td></tr>
+      <tr><td>Artifacts</td><td>list artifacts, match <code>turn_id</code> + <code>/workspace/outputs/summary.json</code>, download</td></tr>
+      <tr><td>Cleanup</td><td>delete session (retry on 409); artifacts survive expiry</td></tr>
+    </table>
+  </section>
+</main>
+
+<footer>
+  <p class="mut">PlayGround demo &middot; working dir <code>/workspace</code> &middot; keepsakes under <code>/workspace/outputs</code></p>
+</footer>
+
+<script>
+(function () {
+  var amounts = document.getElementById('amounts');
+  var output = document.getElementById('output');
+  var status = document.getElementById('status');
+  var runBtn = document.getElementById('run');
+  var resetBtn = document.getElementById('reset');
+  var network = document.getElementById('network');
+  var DEFAULT = 'amount\n10\n20\n30';
+
+  function parseTotal(text) {
+    var lines = String(text).split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+    if (lines.length && !/^-?\d+(\.\d+)?$/.test(lines[0])) lines = lines.slice(1); // header
+    var total = 0, bad = [];
+    lines.forEach(function (ln, i) {
+      var n = Number(ln);
+      if (!Number.isFinite(n)) bad.push('line ' + (i + 1) + ': ' + ln);
+      else total += n;
+    });
+    return { total: total, bad: bad, count: lines.length - bad.length };
+  }
+
+  runBtn.addEventListener('click', function () {
+    var r = parseTotal(amounts.value);
+    if (r.bad.length) {
+      status.textContent = 'Invalid input — ' + r.bad.join('; ');
+      status.classList.remove('ok');
+      return;
+    }
+    output.textContent = JSON.stringify({ total: r.total });
+    status.textContent = 'Done: summed ' + r.count + ' rows (network=' + network.value + ').';
+    status.classList.add('ok');
+  });
+
+  resetBtn.addEventListener('click', function () {
+    amounts.value = DEFAULT;
+    network.value = 'disabled';
+    output.textContent = JSON.stringify({ total: 60 });
+    status.textContent = 'Ready.';
+    status.classList.remove('ok');
+  });
+
+  // Initial render matches the documented example.
+  output.textContent = JSON.stringify({ total: 60 });
+})();
+</script>
+</body>
+</html>
