@@ -95,6 +95,7 @@
 <div id="hud">
   <div id="fps">60 FPS</div>
   <div id="topbar">
+    <div class="pill">GUN <b id="weapon">RIFLE</b></div>
     <div class="pill">SCORE <b id="score">0</b></div>
     <div class="pill cyan">KILLS <b id="kills">0</b></div>
     <div class="pill">WAVE <b id="wave">1</b></div>
@@ -123,7 +124,7 @@
 <div id="menu" class="overlay">
   <div class="kicker">THREE.JS // WEBGL ARENA</div>
   <h1 class="title">ARENA<br/>STRIKE</h1>
-  <p class="subtitle">FPS demo scene — pointer-lock mouse look, WASD movement, sprint, jump, hitscan rifle with tracers, reactive target bots, waves, particles, procedural audio and a full HUD. Click deploy to lock your mouse and play.</p>
+  <p class="subtitle">FPS demo scene — pointer-lock mouse look, WASD movement, sprint, jump, 4-weapon arsenal with hitscan tracers, glowing weapon crates that respawn when you're dry, reactive target bots, waves, particles, procedural audio and a full HUD. Click deploy to lock your mouse and play.</p>
   <div class="controls-grid">
     <span><b>W A S D</b></span><span>Move</span>
     <span><b>MOUSE</b></span><span>Look · <b>CLICK</b> shoot</span>
@@ -217,8 +218,74 @@ ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
   }
 }
 
-/* ============ arena geometry + colliders ============ */
+/* ============ terrain: roads ============ */
+/* AABB colliders shared by arena props and tree trunks */
 const colliders = []; // {min:Vector3,max:Vector3}
+function roadTexture(){
+  const c=document.createElement('canvas'); c.width=128; c.height=512;
+  const g=c.getContext('2d');
+  g.fillStyle='#33363c'; g.fillRect(0,0,128,512);
+  for(let i=0;i<1500;i++){ g.fillStyle=`rgba(${20+Math.random()*30|0},${22+Math.random()*30|0},${26+Math.random()*30|0},.6)`;
+    g.fillRect(Math.random()*128,Math.random()*512,2,2); }
+  // edge lines
+  g.fillStyle='#e8e4d8'; g.fillRect(6,0,5,512); g.fillRect(117,0,5,512);
+  // centre dashes
+  g.fillStyle='#ffd94d';
+  for(let y=0;y<512;y+=64) g.fillRect(60,y+8,8,36);
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4; return t;
+}
+{
+  const roadTex=roadTexture();
+  const roadMat=new THREE.MeshStandardMaterial({ roughness:.95, metalness:0 });
+  const mkRoad=(w,l,x,z,rotY,rep)=>{
+    const tex=roadTex.clone(); tex.needsUpdate=true; tex.repeat.set(1,rep);
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(w,l),
+      new THREE.MeshStandardMaterial({ map:tex, roughness:.95, metalness:0 }));
+    m.rotation.x=-Math.PI/2; m.rotation.z=rotY; m.position.set(x,0.02,z);
+    m.receiveShadow=true; scene.add(m);
+  };
+  // cross through the arena centre (flat: walkable, no colliders)
+  mkRoad(6,220, 0,0, 0, 22);            // north–south
+  mkRoad(6,220, 0,0, Math.PI/2, 22);    // east–west
+  // centre plaza disc where the roads meet
+  const plaza=new THREE.Mesh(new THREE.CircleGeometry(5.2,28),
+    new THREE.MeshStandardMaterial({ color:0x3a3d44, roughness:.95 }));
+  plaza.rotation.x=-Math.PI/2; plaza.position.set(0,0.03,0); plaza.receiveShadow=true; scene.add(plaza);
+}
+
+/* ============ terrain: trees ============ */
+const trunkMat=new THREE.MeshStandardMaterial({ color:0x6b4a2b, roughness:.9 });
+const leafMats=[0x2f7a33,0x3a8f3e,0x27632c].map(c=>new THREE.MeshStandardMaterial({ color:c, roughness:.85, flatShading:true }));
+const trunkGeo=new THREE.CylinderGeometry(.28,.42,2.2,8);
+const coneGeo=new THREE.ConeGeometry(1.9,2.6,8);
+const coneGeo2=new THREE.ConeGeometry(1.4,2.0,8);
+let treeCount=0;
+function makeTree(x,z,s=1,leaf=null){
+  const g=new THREE.Group();
+  const trunk=new THREE.Mesh(trunkGeo,trunkMat); trunk.position.y=1.1; trunk.castShadow=true; g.add(trunk);
+  const lm=leaf ?? leafMats[Math.random()*leafMats.length|0];
+  const c1=new THREE.Mesh(coneGeo,lm); c1.position.y=3.0; c1.castShadow=true; g.add(c1);
+  const c2=new THREE.Mesh(coneGeo2,lm); c2.position.y=4.4; c2.castShadow=true; g.add(c2);
+  g.position.set(x,0,z); g.scale.setScalar(s); g.rotation.y=Math.random()*Math.PI*2;
+  scene.add(g); treeCount++;
+  return g;
+}
+{
+  // pine forest ring outside the walls (scenery, no colliders)
+  let tseed=12345; const trnd=()=> (tseed=(tseed*16807)%2147483647)/2147483647;
+  for(let i=0;i<40;i++){
+    const a=trnd()*Math.PI*2, r=50+trnd()*45;
+    makeTree(Math.cos(a)*r,(Math.sin(a)*r), .9+trnd()*1.3);
+  }
+  // four corner shade trees inside the arena (trunks block movement)
+  [[-32,-32],[32,-32],[-32,32],[32,32]].forEach(([x,z])=>{
+    makeTree(x,z,1.15);
+    colliders.push({min:new THREE.Vector3(x-.5,0,z-.5),max:new THREE.Vector3(x+.5,2.2,z+.5)});
+  });
+}
+
+/* ============ arena geometry + colliders ============ */
 function addBox(w,h,d,x,y,z,color,rough=.8){
   const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d),
     new THREE.MeshStandardMaterial({ color, roughness:rough, metalness:.08 }));
@@ -264,6 +331,7 @@ const gun = new THREE.Group();
   const barrel=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.4,10),mid);
   barrel.rotation.x=Math.PI/2; barrel.position.set(0,.02,-.45); gun.add(barrel);
   const sight=new THREE.Mesh(new THREE.BoxGeometry(.02,.06,.06),acc); sight.position.set(0,.1,-.1); gun.add(sight);
+  gun.userData.sight=sight;
   const grip=new THREE.Mesh(new THREE.BoxGeometry(.08,.18,.09),mid); grip.position.set(0,-.13,.12); grip.rotation.x=.3; gun.add(grip);
   const mag=new THREE.Mesh(new THREE.BoxGeometry(.07,.16,.08),dark); mag.position.set(0,-.12,-.08); mag.rotation.x=-.25; gun.add(mag);
   const flash=new THREE.Mesh(new THREE.ConeGeometry(.09,.28,10),
@@ -277,7 +345,7 @@ let recoil=0;
 /* ============ audio (procedural) ============ */
 let AC=null;
 const audio=()=> AC ??= new (window.AudioContext||window.webkitAudioContext)();
-function bang(){
+function bang(rate=1){
   try{
     const ac=audio(), t=ac.currentTime;
     const buf=ac.createBuffer(1,ac.sampleRate*.18,ac.sampleRate), d=buf.getChannelData(0);
@@ -286,9 +354,20 @@ function bang(){
     const f=ac.createBiquadFilter(); f.type='lowpass'; f.frequency.setValueAtTime(3200,t); f.frequency.exponentialRampToValueAtTime(300,t+.15);
     const g=ac.createGain(); g.gain.setValueAtTime(.5,t); g.gain.exponentialRampToValueAtTime(.001,t+.18);
     src.connect(f).connect(g).connect(ac.destination); src.start();
-    const o=ac.createOscillator(); o.type='square'; o.frequency.setValueAtTime(160,t); o.frequency.exponentialRampToValueAtTime(45,t+.1);
+    const o=ac.createOscillator(); o.type='square'; o.frequency.setValueAtTime(160*rate,t); o.frequency.exponentialRampToValueAtTime(45*rate,t+.1);
     const g2=ac.createGain(); g2.gain.setValueAtTime(.25,t); g2.gain.exponentialRampToValueAtTime(.001,t+.1);
     o.connect(g2).connect(ac.destination); o.start(t); o.stop(t+.11);
+  }catch(e){}
+}
+function pickupJingle(){
+  try{
+    const ac=audio(), t=ac.currentTime;
+    [523,659,784].forEach((fq,i)=>{
+      const o=ac.createOscillator(), g=ac.createGain();
+      o.type='triangle'; o.frequency.value=fq;
+      g.gain.setValueAtTime(.0001,t+i*.07); g.gain.exponentialRampToValueAtTime(.22,t+i*.07+.02); g.gain.exponentialRampToValueAtTime(.001,t+i*.07+.18);
+      o.connect(g).connect(ac.destination); o.start(t+i*.07); o.stop(t+i*.07+.2);
+    });
   }catch(e){}
 }
 function hitConfirm(kill){
@@ -425,7 +504,15 @@ function tracer(from,dir,len){
 
 /* ============ game state / HUD ============ */
 let score=0,kills=0,wave=1,startTime=performance.now(),elapsed=0;
-let ammo=30,reserve=90,reloading=false,reloadEnd=0;
+/* ============ weapons ============ */
+const WEAPONS={
+  rifle:   { name:'RIFLE',    dmg:34,  interval:130,  mag:30, startReserve:90,  pellets:1, spread:0.008, recoil:1,   sound:1,   color:0xff9d00 },
+  smg:     { name:'SMG',      dmg:16,  interval:75,   mag:45, startReserve:135, pellets:1, spread:0.03,  recoil:0.6, sound:1.4, color:0x35e0ff },
+  scatter: { name:'SCATTER',  dmg:12,  interval:850,  mag:6,  startReserve:24,  pellets:8, spread:0.07,  recoil:2.2, sound:0.6, color:0xff3b3b },
+  longshot:{ name:'LONGSHOT', dmg:110, interval:1000, mag:5,  startReserve:20,  pellets:1, spread:0.001, recoil:1.8, sound:0.8, color:0xc26bff },
+};
+let cur='rifle';
+let ammo=WEAPONS.rifle.mag, reserve=WEAPONS.rifle.startReserve, reloading=false, reloadEnd=0;
 const $=id=>document.getElementById(id);
 const elScore=$('score'),elKills=$('kills'),elWave=$('wave'),elTime=$('time'),elAmmo=$('ammo'),elHp=$('healthFill'),
   elFps=$('fps'),elHit=$('hitmarker'),elDmg=$('damageVignette'),elHeal=$('healVignette'),elHint=$('reloadHint'),feed=$('killfeed');
@@ -433,7 +520,7 @@ function fmt(t){ t|=0; return `${t/60|0}:${String(t%60).padStart(2,'0')}`; }
 function feedMsg(t){ const d=document.createElement('div'); d.className='feed'; d.textContent=t; feed.prepend(d);
   while(feed.children.length>4) feed.lastChild.remove(); setTimeout(()=>d.remove(),3200); }
 function startReload(){
-  if(reloading||ammo===30||reserve<=0||!player.alive) return;
+  if(reloading||ammo===WEAPONS[cur].mag||reserve<=0||!player.alive) return;
   reloading=true; reloadEnd=performance.now()+1400;
   elHint.textContent='RELOADING…'; elHint.classList.add('reloading');
 }
@@ -445,46 +532,118 @@ function damagePlayer(n){
     over.classList.remove('hidden'); }
 }
 function resetGame(){
-  score=0;kills=0;wave=1;ammo=30;reserve=90;reloading=false;
+  score=0;kills=0;wave=1;
+  cur='rifle'; ammo=WEAPONS.rifle.mag; reserve=WEAPONS.rifle.startReserve; reloading=false;
+  gun.userData.sight.material.color.set(WEAPONS.rifle.color);
+  $('weapon').textContent='RIFLE';
   // spawn faces the arena centre (-Z from z=24), so W runs into the arena
   player.hp=100;player.alive=true;player.pos.set(0,1.7,24);player.vel.set(0,0,0);player.yaw=0;player.pitch=0;
   startTime=performance.now();
   enemies.forEach(e=>{e.respawn=Math.random()*1.5;e.alive=false;e.mesh.visible=false;});
   shots.forEach(s=>scene.remove(s.mesh)); shots.length=0;
+  pickups.forEach(p=>scene.remove(p.mesh)); pickups.length=0;
+  spawnPickup('smg'); spawnPickup('scatter'); spawnPickup('longshot'); pickupRespawnT=8;
   over.classList.add('hidden'); menu.classList.add('hidden'); elHint.classList.remove('reloading'); elHint.textContent='R — RELOAD · SHIFT — SPRINT';
 }
 
 /* shooting */
 const ray=new THREE.Raycaster();
+function damageBot(bot,h){
+  bot.hp-=h.dmg; burst(h.point,0xffcf4d,10,5);
+  elHit.classList.add('show'); setTimeout(()=>elHit.classList.remove('show'),110);
+  if(bot.hp<=0){ bot.alive=false; bot.mesh.visible=false; bot.respawn=2.2; kills++; score+=100+(wave-1)*25;
+    elHit.classList.add('kill'); setTimeout(()=>elHit.classList.remove('kill'),200);
+    hitConfirm(true); burst(bot.mesh.position.clone().add(new THREE.Vector3(0,1.3,0)),0xff5a3c,26,8);
+    feedMsg(`✖ Hostile down +${100+(wave-1)*25}`);
+    if(kills%8===0){ wave++; enemies.forEach(e=>e.speed=Math.min(6,e.speed+.5)); feedMsg(`▲ WAVE ${wave} — hostiles faster`); }
+  } else hitConfirm(false);
+}
 function shoot(){
-  if(reloading||ammo<=0){ if(ammo<=0) startReload(); return; }
-  ammo--; lastShot=performance.now(); bang(); recoil=1;
-  const flash=gun.getObjectByName('flash'); flash.material.opacity=1;
+  const cfg=WEAPONS[cur];
+  if(reloading) return;
+  if(ammo<=0){
+    if(reserve>0) startReload();
+    else { elHint.textContent='NO AMMO — GRAB A GLOWING WEAPON CRATE'; elHint.classList.add('reloading'); }
+    return;
+  }
+  ammo--; lastShot=performance.now(); bang(cfg.sound); recoil=cfg.recoil;
+  const flash=gun.getObjectByName('flash'); flash.material.opacity=1; flash.scale.setScalar(cfg.pellets>1?1.7:1);
   muzzleLight.position.copy(camera.localToWorld(new THREE.Vector3(.28,-.2,-1.2))); muzzleLight.intensity=6;
-  camera.getWorldDirection(ray.ray.direction); ray.ray.origin.copy(camera.getWorldPosition(new THREE.Vector3()));
   ray.far=120;
   const targets=enemies.filter(e=>e.alive).map(e=>e.mesh);
-  const hits=ray.intersectObjects(targets,true);
-  let end=ray.ray.origin.clone().add(ray.ray.direction.clone().multiplyScalar(90));
-  if(hits.length){
-    const h=hits[0]; end=h.point;
-    let bot=enemies.find(e=>{let o=h.object; while(o){if(o===e.mesh)return true;o=o.parent;} return false;});
-    if(bot){ bot.hp-=34; burst(h.point,0xffcf4d,10,5);
-      elHit.classList.add('show'); setTimeout(()=>elHit.classList.remove('show'),110);
-      if(bot.hp<=0){ bot.alive=false; bot.mesh.visible=false; bot.respawn=2.2; kills++; score+=100+(wave-1)*25;
-        elHit.classList.add('kill'); setTimeout(()=>elHit.classList.remove('kill'),200);
-        hitConfirm(true); burst(bot.mesh.position.clone().add(new THREE.Vector3(0,1.3,0)),0xff5a3c,26,8);
-        feedMsg(`✖ Hostile down +${100+(wave-1)*25}`);
-        if(kills%8===0){ wave++; enemies.forEach(e=>e.speed=Math.min(6,e.speed+.5)); feedMsg(`▲ WAVE ${wave} — hostiles faster`); }
-      } else hitConfirm(false);
+  const origin=camera.getWorldPosition(new THREE.Vector3());
+  for(let p=0;p<cfg.pellets;p++){
+    camera.getWorldDirection(ray.ray.direction);
+    ray.ray.direction.x+=(Math.random()-.5)*cfg.spread*2;
+    ray.ray.direction.y+=(Math.random()-.5)*cfg.spread*2;
+    ray.ray.direction.z+=(Math.random()-.5)*cfg.spread*2;
+    ray.ray.direction.normalize();
+    ray.ray.origin.copy(origin);
+    const hits=ray.intersectObjects(targets,true);
+    let end=origin.clone().add(ray.ray.direction.clone().multiplyScalar(90));
+    if(hits.length){
+      const h=hits[0]; end=h.point;
+      const bot=enemies.find(e=>{let o=h.object; while(o){if(o===e.mesh)return true;o=o.parent;} return false;});
+      if(bot) damageBot(bot,{point:h.point,dmg:cfg.dmg});
     }
-  } else {
-    // wall puff
-    const wallHit=ray.intersectObjects(scene.children.filter(o=>o.isMesh&&o!==ground),false)[0];
+    tracer(origin,ray.ray.direction, end.distanceTo(origin));
   }
-  tracer(camera.getWorldPosition(new THREE.Vector3()),ray.ray.direction, end.distanceTo(ray.ray.origin));
-  if(ammo===0) startReload();
+  if(ammo===0&&reserve>0) startReload();
 }
+
+/* ============ weapon pickups (spawned crates) ============ */
+const pickups=[];
+let pickupRespawnT=8;
+function pickupSpot(){
+  for(let t=0;t<24;t++){
+    const x=(Math.random()*2-1)*30, z=(Math.random()*2-1)*30;
+    if(Math.hypot(x,z-24)<6) continue; // keep clear of player spawn
+    let blocked=false;
+    for(const c of colliders){
+      if(x>c.min.x-1.5&&x<c.max.x+1.5&&z>c.min.z-1.5&&z<c.max.z+1.5){ blocked=true; break; }
+    }
+    if(!blocked) return {x,z};
+  }
+  return {x:(Math.random()*2-1)*20, z:(Math.random()*2-1)*20};
+}
+function weaponLabel(text,colorCss){
+  const c=document.createElement('canvas'); c.width=256; c.height=64;
+  const g=c.getContext('2d');
+  g.font='800 34px monospace'; g.textAlign='center'; g.textBaseline='middle';
+  g.shadowColor=colorCss; g.shadowBlur=14; g.fillStyle='#ffffff';
+  g.fillText(text,128,34);
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t;
+}
+function spawnPickup(forceKey){
+  const keys=Object.keys(WEAPONS);
+  const key=forceKey ?? keys[Math.random()*keys.length|0];
+  const cfg=WEAPONS[key], s=pickupSpot();
+  const g=new THREE.Group();
+  const crate=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.55,0.7),
+    new THREE.MeshStandardMaterial({ color:0x15171c, roughness:.4, metalness:.5,
+      emissive:cfg.color, emissiveIntensity:.55 }));
+  crate.castShadow=true; g.add(crate);
+  const lid=new THREE.Mesh(new THREE.BoxGeometry(1.14,0.12,0.74),
+    new THREE.MeshStandardMaterial({ color:cfg.color, roughness:.4, metalness:.3,
+      emissive:cfg.color, emissiveIntensity:.9 }));
+  lid.position.y=.33; g.add(lid);
+  const colorCss='#'+cfg.color.toString(16).padStart(6,'0');
+  const tag=new THREE.Sprite(new THREE.SpriteMaterial({ map:weaponLabel(cfg.name,colorCss), transparent:true, depthWrite:false }));
+  tag.scale.set(2.4,.6,1); tag.position.y=1.15; g.add(tag);
+  g.position.set(s.x,0.95,s.z);
+  scene.add(g);
+  pickups.push({ mesh:g, key, phase:Math.random()*Math.PI*2 });
+}
+function equipWeapon(key){
+  const cfg=WEAPONS[key];
+  cur=key; ammo=cfg.mag; reserve=cfg.startReserve; reloading=false;
+  elHint.classList.remove('reloading'); elHint.textContent='R — RELOAD · SHIFT — SPRINT';
+  $('weapon').textContent=cfg.name;
+  gun.userData.sight.material.color.set(cfg.color);
+  pickupJingle();
+  feedMsg(`▲ Picked up ${cfg.name} — ${cfg.mag}/${cfg.startReserve}`);
+}
+spawnPickup('smg'); spawnPickup('scatter'); spawnPickup('longshot');
 
 /* collision resolve (XZ, circle vs AABB) */
 function collide(p,r){
@@ -531,10 +690,18 @@ function tick(){
     camera.rotation.set(0,0,0); camera.rotateY(player.yaw); camera.rotateX(player.pitch);
     // head bob
     if(wish.lengthSq()>.01&&player.onGround){ const b=Math.sin(performance.now()*.012)*.035; camera.position.y+=b; }
-    // fire
-    if((triggerHeld||touchFire)&&performance.now()-lastShot>130) shoot();
-    if(reloading&&performance.now()>reloadEnd){ const need=30-ammo,take=Math.min(need,reserve);
+    // fire (interval depends on held weapon)
+    if((triggerHeld||touchFire)&&performance.now()-lastShot>WEAPONS[cur].interval) shoot();
+    if(reloading&&performance.now()>reloadEnd){ const need=WEAPONS[cur].mag-ammo,take=Math.min(need,reserve);
       ammo+=take; reserve-=take; reloading=false; elHint.classList.remove('reloading'); elHint.textContent='R — RELOAD · SHIFT — SPRINT'; }
+    // weapon pickups: walk over a glowing crate to claim it
+    for(let i=pickups.length-1;i>=0;i--){ const p=pickups[i];
+      const dx=player.pos.x-p.mesh.position.x, dz=player.pos.z-p.mesh.position.z;
+      if(dx*dx+dz*dz<2.2*2.2){
+        burst(p.mesh.position.clone(),WEAPONS[p.key].color,18,6);
+        scene.remove(p.mesh); pickups.splice(i,1);
+        equipWeapon(p.key); pickupRespawnT=8;
+      } }
     // regen
     if(elapsed-player.lastDmg>4&&player.hp<100){player.hp=Math.min(100,player.hp+dt*10); if(player.hp>95){elHeal.style.opacity=.6; setTimeout(()=>elHeal.style.opacity=0,300);} }
     // enemies
@@ -567,6 +734,10 @@ function tick(){
     elScore.textContent=score; elKills.textContent=kills; elWave.textContent=wave; elTime.textContent=fmt(elapsed);
     elAmmo.innerHTML=`${ammo} <small>/ ${reserve}</small>`;
     elHp.style.width=player.hp+'%'; elHp.classList.toggle('low',player.hp<35);
+    if(!reloading){
+      if(ammo===0&&reserve===0){ elHint.textContent='NO AMMO — GRAB A GLOWING WEAPON CRATE'; elHint.classList.add('reloading'); }
+      else if(elHint.textContent.startsWith('NO AMMO')){ elHint.classList.remove('reloading'); elHint.textContent='R — RELOAD · SHIFT — SPRINT'; }
+    }
   } else if(player.alive && !playing){
     // menu backdrop: slow cinematic orbit, gun hidden
     gun.visible=false;
@@ -581,6 +752,10 @@ function tick(){
   recoil=Math.max(0,recoil-dt*6); gun.position.z=-.55+recoil*.09; gun.rotation.x=recoil*.12;
   gun.getObjectByName('flash').material.opacity=Math.max(0,gun.getObjectByName('flash').material.opacity-dt*14);
   muzzleLight.intensity=Math.max(0,muzzleLight.intensity-dt*60);
+  // pickup crates: bob + spin, keep 3 on the field
+  const nowS=performance.now()*.001;
+  for(const p of pickups){ p.mesh.position.y=0.95+Math.sin(nowS*2+p.phase)*0.18; p.mesh.rotation.y+=dt*1.2; }
+  if(pickups.length<3){ pickupRespawnT-=dt; if(pickupRespawnT<=0){ spawnPickup(); pickupRespawnT=8; } }
   for(let i=particles.length-1;i>=0;i--){ const p=particles[i];
     p.life-=dt; p.vel.y-=12*dt; p.mesh.position.addScaledVector(p.vel,dt); p.mesh.rotation.x+=dt*5;
     if(p.life<=0){scene.remove(p.mesh);particles.splice(i,1);} }
@@ -595,7 +770,14 @@ addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.upd
 
 /* expose for automated checks */
 window.__game = { player, keys, enemies, get playing(){return playing}, get locked(){return locked},
-  start: ()=>startPlay(), spawn: ()=>enemies.forEach(spawnBot), get score(){return score}, version:'arena-strike-1.1' };
+  start: ()=>startPlay(), spawn: ()=>enemies.forEach(spawnBot), get score(){return score},
+  get weapon(){return cur}, get ammo(){return ammo}, get reserve(){return reserve},
+  pickups: ()=>pickups.map(p=>({w:p.key,x:+p.mesh.position.x.toFixed(1),z:+p.mesh.position.z.toFixed(1)})),
+  debug: {
+    emptyAmmo(){ ammo=0; reserve=0; },
+    teleport(x,z){ player.pos.set(x,1.7,z); player.vel.set(0,0,0); },
+  },
+  terrain: { get trees(){return treeCount}, roads: 2 }, version:'arena-strike-1.3' };
 </script>
 </body>
 </html>
