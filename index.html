@@ -300,31 +300,46 @@ function hitConfirm(kill){
 }
 
 /* ============ player state ============ */
-const player = { pos:new THREE.Vector3(0,1.7,24), vel:new THREE.Vector3(), yaw:Math.PI, pitch:0,
+const player = { pos:new THREE.Vector3(0,1.7,24), vel:new THREE.Vector3(), yaw:0, pitch:0,
   hp:100, onGround:true, alive:true, lastDmg:-9, lastRegen:0 };
 const keys={};
-addEventListener('keydown',e=>{ keys[e.code]=true; if(e.code==='KeyR') startReload(); if(['Space','ArrowUp'].includes(e.code)) e.preventDefault(); });
+addEventListener('keydown',e=>{ keys[e.code]=true; if(e.code==='KeyR') startReload(); if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault(); });
 addEventListener('keyup',e=> keys[e.code]=false);
+addEventListener('blur',()=>{ for(const k in keys) keys[k]=false; triggerHeld=false; });
 
-let locked=false;
+let locked=false, playing=false;
+// drag-look fallback when pointer lock is unavailable (e.g. iframe without pointer-lock allow)
+let dragging=false, dragLast=null;
 const menu=document.getElementById('menu'), over=document.getElementById('gameover');
 function lockPointer(){ renderer.domElement.requestPointerLock?.(); }
-document.getElementById('playBtn').onclick=()=>{ audio(); lockPointer(); };
-document.getElementById('retryBtn').onclick=()=>{ resetGame(); lockPointer(); };
+function startPlay(){ playing=true; audio(); menu.classList.add('hidden'); over.classList.add('hidden'); lockPointer(); }
+document.getElementById('playBtn').onclick=()=>{ startPlay(); };
+document.getElementById('retryBtn').onclick=()=>{ resetGame(); startPlay(); };
 document.getElementById('howBtn').onclick=e=>{ e.target.textContent = renderer.shadowMap.enabled ? 'Quality: shadows OFF (perf)' : 'Quality: shadows + fog + particles ON'; renderer.shadowMap.enabled=!renderer.shadowMap.enabled; };
 document.addEventListener('pointerlockchange',()=>{
   locked = document.pointerLockElement===renderer.domElement;
   if(locked){ menu.classList.add('hidden'); if(!player.alive) resetGame(); clock.getDelta(); }
-  else if(player.alive){ menu.classList.remove('hidden'); }
+  else if(player.alive && !playing){ menu.classList.remove('hidden'); }
+  // when playing but lock was lost (Esc), keep the game running with drag-look fallback
 });
 addEventListener('mousemove',e=>{
-  if(!locked||!player.alive) return;
-  player.yaw -= e.movementX*0.0022; player.pitch -= e.movementY*0.0022;
-  player.pitch = Math.max(-1.45, Math.min(1.45, player.pitch));
+  if(!player.alive) return;
+  if(locked){
+    player.yaw -= e.movementX*0.0022; player.pitch -= e.movementY*0.0022;
+    player.pitch = Math.max(-1.45, Math.min(1.45, player.pitch));
+  } else if(playing && dragging && dragLast){
+    player.yaw -= (e.clientX-dragLast.x)*0.004; player.pitch -= (e.clientY-dragLast.y)*0.004;
+    player.pitch = Math.max(-1.45, Math.min(1.45, player.pitch));
+    dragLast={x:e.clientX,y:e.clientY};
+  }
 });
-// shooting input
+renderer.domElement.addEventListener('mousedown',e=>{
+  if(playing && !locked){ dragging=true; dragLast={x:e.clientX,y:e.clientY}; lockPointer(); }
+});
+addEventListener('mouseup',()=>{ dragging=false; dragLast=null; });
+// shooting input (works with pointer lock or drag-look fallback)
 let triggerHeld=false, lastShot=0;
-addEventListener('mousedown',e=>{ if(locked&&e.button===0) triggerHeld=true; });
+addEventListener('mousedown',e=>{ if(playing&&player.alive&&e.button===0) triggerHeld=true; });
 addEventListener('mouseup',e=>{ if(e.button===0) triggerHeld=false; });
 
 /* touch controls */
@@ -431,7 +446,8 @@ function damagePlayer(n){
 }
 function resetGame(){
   score=0;kills=0;wave=1;ammo=30;reserve=90;reloading=false;
-  player.hp=100;player.alive=true;player.pos.set(0,1.7,24);player.vel.set(0,0,0);player.yaw=Math.PI;player.pitch=0;
+  // spawn faces the arena centre (-Z from z=24), so W runs into the arena
+  player.hp=100;player.alive=true;player.pos.set(0,1.7,24);player.vel.set(0,0,0);player.yaw=0;player.pitch=0;
   startTime=performance.now();
   enemies.forEach(e=>{e.respawn=Math.random()*1.5;e.alive=false;e.mesh.visible=false;});
   shots.forEach(s=>scene.remove(s.mesh)); shots.length=0;
@@ -491,16 +507,17 @@ function tick(){
   fpsAcc+=1/Math.max(dt,1e-4); fpsN++; fpsT+=dt;
   if(fpsT>.5){ elFps.textContent=`${Math.round(fpsAcc/fpsN)} FPS · ${renderer.info.render.triangles|0} tris`; fpsAcc=fpsN=fpsT=0; }
 
-  if(player.alive && locked){
+  if(player.alive && playing){
     gun.visible=true;
     elapsed=(performance.now()-startTime)/1000;
-    // movement
+    // movement (WASD relative to view yaw)
     const sprint=(keys.ShiftLeft||keys.ShiftRight)?1.7:1;
     fwd.set(-Math.sin(player.yaw),0,-Math.cos(player.yaw)); rgt.set(-fwd.z,0,fwd.x);
     const wish=new THREE.Vector3();
     if(keys.KeyW||keys.ArrowUp)wish.add(fwd); if(keys.KeyS||keys.ArrowDown)wish.sub(fwd);
     if(keys.KeyD||keys.ArrowRight)wish.add(rgt); if(keys.KeyA||keys.ArrowLeft)wish.sub(rgt);
-    wish.add(new THREE.Vector3(joyVec.x,0,joyVec.y));
+    // joystick is camera-relative: up = forward
+    wish.addScaledVector(fwd,-joyVec.y); wish.addScaledVector(rgt,joyVec.x);
     if(wish.lengthSq()>1)wish.normalize();
     const speed=6.2*sprint;
     player.vel.x+=(wish.x*speed-player.vel.x)*Math.min(1,dt*10);
@@ -550,12 +567,15 @@ function tick(){
     elScore.textContent=score; elKills.textContent=kills; elWave.textContent=wave; elTime.textContent=fmt(elapsed);
     elAmmo.innerHTML=`${ammo} <small>/ ${reserve}</small>`;
     elHp.style.width=player.hp+'%'; elHp.classList.toggle('low',player.hp<35);
-  } else if(player.alive){
+  } else if(player.alive && !playing){
     // menu backdrop: slow cinematic orbit, gun hidden
     gun.visible=false;
     const t=performance.now()*.00012;
     camera.position.set(Math.sin(t)*24, 9, Math.cos(t)*24);
     camera.lookAt(0,1.5,0);
+  } else if(player.alive && playing && !locked){
+    // playing without pointer lock: keep last camera transform (drag-look fallback)
+    gun.visible=true;
   }
   // fx decay
   recoil=Math.max(0,recoil-dt*6); gun.position.z=-.55+recoil*.09; gun.rotation.x=recoil*.12;
@@ -574,7 +594,8 @@ tick();
 addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
 
 /* expose for automated checks */
-window.__game = { player, enemies, spawn: ()=>enemies.forEach(spawnBot), get score(){return score}, version:'arena-strike-1.0' };
+window.__game = { player, keys, enemies, get playing(){return playing}, get locked(){return locked},
+  start: ()=>startPlay(), spawn: ()=>enemies.forEach(spawnBot), get score(){return score}, version:'arena-strike-1.1' };
 </script>
 </body>
 </html>
