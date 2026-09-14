@@ -1,0 +1,10 @@
+- generic [ref=f1e5]:
+  - generic [ref=f1e6]: BROWSER FPS • THREE.JS
+  - heading "COUNTERSTRIKE" [level=1] [ref=f1e7]
+  - paragraph [ref=f1e8]: De-Dust prototype — CT vs T • first to 5 rounds • bots included
+  - list [ref=f1e9]:
+    - listitem [ref=f1e10]: WASD move Mouse look Click shoot
+    - listitem [ref=f1e11]: R reload B buy menu 1/2/3 weapons Right-click aim
+  - button "▶ CLICK TO DEPLOY" [ref=f1e12] [cursor=pointer]
+  - generic [ref=f1e13]: map loaded — click deploy
+  - generic [ref=f1e14]: ready
