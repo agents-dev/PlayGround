@@ -35,3 +35,9 @@ h1{font-size:64px;margin:8px 0;letter-spacing:.02em}h1 span{color:#ff9d2e}
 #play{font-size:20px;font-weight:800;padding:14px 34px;border-radius:10px;border:0;background:#ff9d2e;color:#111;cursor:pointer}
 #play:hover{background:#ffc35e}#load-status{margin-top:12px;font-size:13px;opacity:.7}
 #pause-tip{position:fixed;left:50%;top:58%;transform:translateX(-50%);background:#000a;padding:8px 16px;border-radius:8px}
+#bomb-status{position:absolute;top:64px;left:50%;transform:translateX(-50%);background:rgba(5,8,12,.62);border:1px solid rgba(255,255,255,.12);padding:5px 14px;border-radius:7px;font-size:13px;font-weight:700;letter-spacing:.05em;color:#ffd47a}
+#channel-wrap{position:absolute;left:50%;top:60%;transform:translateX(-50%);width:260px;text-align:center}
+#channel-label{font-weight:800;letter-spacing:.08em;margin-bottom:6px;text-shadow:0 2px 8px #000}
+#channel-track{height:10px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.25);border-radius:6px;overflow:hidden}
+#channel-fill{height:100%;width:0%;background:#39ff7a}
+#defuse-prompt{position:absolute;left:50%;top:55%;transform:translateX(-50%);background:rgba(0,0,0,.65);border:1px solid #39ff7a;color:#39ff7a;font-weight:800;padding:8px 18px;border-radius:8px;letter-spacing:.06em}
