@@ -111,6 +111,226 @@ function textSprite(t, x, z) {
 }
 textSprite('A', -20, 18); textSprite('B', 20, -18);
 
+// ---------------- bot navigation: walkability grid + A* + steering ----------------
+// The old wander logic picked uniform-random points and walked straight at them,
+// so bots wedged into walls/crates and jittered. This builds a 1m walkability
+// grid from the same colliders, routes with A*, smooths the path with
+// line-of-sight string-pulling, and follows it with wall-slide + separation +
+// stuck detection, so bots flow around cover instead of pushing into it.
+const NAV_MIN = -29, NAV_MAX = 29, NAV_CELL = 1;
+const NAV_W = Math.round((NAV_MAX - NAV_MIN) / NAV_CELL);
+const NAV_H = NAV_W;
+function navFootBlocked(x, z, r = 0.45) {
+  if (x < NAV_MIN + 0.4 || x > NAV_MAX - 0.4 || z < NAV_MIN + 0.4 || z > NAV_MAX - 0.4) return true;
+  const minx = x - r, maxx = x + r, minz = z - r, maxz = z + r;
+  for (const b of colliders) {
+    if (b.max.y < 0.6 || b.min.y > 1.8) continue; // step over site pads, walk under lintels/tunnel roofs
+    if (maxx < b.min.x || minx > b.max.x) continue;
+    if (maxz < b.min.z || minz > b.max.z) continue;
+    return true;
+  }
+  return false;
+}
+const navBlocked = new Uint8Array(NAV_W * NAV_H);
+let navBlockedCount = 0;
+function navWorldToCell(x, z) {
+  return {
+    cx: Math.max(0, Math.min(NAV_W - 1, Math.floor((x - NAV_MIN) / NAV_CELL))),
+    cz: Math.max(0, Math.min(NAV_H - 1, Math.floor((z - NAV_MIN) / NAV_CELL))),
+  };
+}
+function navCellToWorld(cx, cz) {
+  return { x: NAV_MIN + (cx + 0.5) * NAV_CELL, z: NAV_MIN + (cz + 0.5) * NAV_CELL };
+}
+(function buildNavGrid() {
+  for (let cz = 0; cz < NAV_H; cz++) {
+    for (let cx = 0; cx < NAV_W; cx++) {
+      const w = navCellToWorld(cx, cz);
+      const blocked = navFootBlocked(w.x, w.z) ? 1 : 0;
+      navBlocked[cz * NAV_W + cx] = blocked;
+      navBlockedCount += blocked;
+    }
+  }
+  window.__navStats = { w: NAV_W, h: NAV_H, blocked: navBlockedCount, free: NAV_W * NAV_H - navBlockedCount };
+})();
+function navNearestFreeCell(x, z) {
+  const { cx, cz } = navWorldToCell(x, z);
+  if (!navBlocked[cz * NAV_W + cx]) return { cx, cz };
+  for (let r = 1; r <= 8; r++) {
+    for (let dz = -r; dz <= r; dz++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
+        const nx = cx + dx, nz = cz + dz;
+        if (nx < 0 || nz < 0 || nx >= NAV_W || nz >= NAV_H) continue;
+        if (!navBlocked[nz * NAV_W + nx]) return { cx: nx, cz: nz };
+      }
+    }
+  }
+  return { cx, cz };
+}
+function navSegmentFree(ax, az, bx, bz) {
+  const dist = Math.hypot(bx - ax, bz - az);
+  const steps = Math.max(1, Math.ceil(dist / 0.4));
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    if (navFootBlocked(ax + (bx - ax) * t, az + (bz - az) * t, 0.35)) return false;
+  }
+  return true;
+}
+function navFindPath(sx, sz, tx, tz) {
+  const s = navNearestFreeCell(sx, sz), t = navNearestFreeCell(tx, tz);
+  const start = t.cz * NAV_W + t.cx === s.cz * NAV_W + s.cx ? s : s;
+  const goal = t;
+  const W = NAV_W, H = NAV_H;
+  const g = new Float64Array(W * H).fill(Infinity);
+  const came = new Int32Array(W * H).fill(-1);
+  const closed = new Uint8Array(W * H);
+  const si = start.cz * W + start.cx, gi = goal.cz * W + goal.cx;
+  if (si === gi) {
+    const w = navCellToWorld(goal.cx, goal.cz);
+    return [{ x: w.x, z: w.z }];
+  }
+  const oct = (ax, az, bx, bz) => {
+    const dx = Math.abs(ax - bx), dz = Math.abs(az - bz);
+    return Math.max(dx, dz) + 0.4142 * Math.min(dx, dz);
+  };
+  const open = [si];
+  const f = new Float64Array(W * H).fill(Infinity);
+  g[si] = 0; f[si] = oct(start.cx, start.cz, goal.cx, goal.cz);
+  const DIRS = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.4142], [1, -1, 1.4142], [-1, 1, 1.4142], [-1, -1, 1.4142]];
+  let iter = 0;
+  while (open.length && iter++ < 6000) {
+    let bi = 0;
+    for (let i = 1; i < open.length; i++) if (f[open[i]] < f[open[bi]]) bi = i;
+    const cur = open.splice(bi, 1)[0];
+    if (cur === gi) break;
+    if (closed[cur]) continue;
+    closed[cur] = 1;
+    const ccx = cur % W, ccz = Math.floor(cur / W);
+    for (const [dx, dz, cost] of DIRS) {
+      const nx = ccx + dx, nz = ccz + dz;
+      if (nx < 0 || nz < 0 || nx >= W || nz >= H) continue;
+      const ni = nz * W + nx;
+      if (navBlocked[ni] || closed[ni]) continue;
+      if (dx !== 0 && dz !== 0) { // no corner cutting through walls
+        if (navBlocked[ccz * W + nx] || navBlocked[nz * W + ccx]) continue;
+      }
+      const ng = g[cur] + cost;
+      if (ng < g[ni]) {
+        g[ni] = ng; came[ni] = cur;
+        f[ni] = ng + oct(nx, nz, goal.cx, goal.cz);
+        if (!open.includes(ni)) open.push(ni);
+      }
+    }
+  }
+  if (came[gi] === -1 && gi !== si) return null; // unreachable
+  const cells = [];
+  let cur = gi;
+  while (cur !== -1) { cells.push(cur); if (cur === si) break; cur = came[cur]; }
+  cells.reverse();
+  let pts = cells.map((i) => navCellToWorld(i % W, Math.floor(i / W)));
+  // string-pulling: greedily skip nodes with clear LOS
+  const smooth = [pts[0]];
+  let anchor = 0;
+  while (anchor < pts.length - 1) {
+    let furthest = anchor + 1;
+    for (let i = pts.length - 1; i > anchor + 1; i--) {
+      if (navSegmentFree(pts[anchor].x, pts[anchor].z, pts[i].x, pts[i].z)) { furthest = i; break; }
+    }
+    smooth.push(pts[furthest]);
+    anchor = furthest;
+  }
+  pts = smooth;
+  // always end exactly at the requested target when walkable-ish
+  if (navSegmentFree(pts[pts.length - 1].x, pts[pts.length - 1].z, tx, tz)) {
+    pts.push({ x: Math.max(NAV_MIN + 0.5, Math.min(NAV_MAX - 0.5, tx)), z: Math.max(NAV_MIN + 0.5, Math.min(NAV_MAX - 0.5, tz)) });
+  }
+  return pts;
+}
+// wall-slide step with teammate separation; returns metres actually moved
+function navTryStep(b, dx, dz) {
+  const ox = b.mesh.position.x, oz = b.mesh.position.z;
+  let nx = ox + dx, nz = oz + dz;
+  if (!navFootBlocked(nx, nz, 0.42)) { b.mesh.position.x = nx; b.mesh.position.z = nz; }
+  else if (!navFootBlocked(nx, oz, 0.42)) { b.mesh.position.x = nx; }
+  else if (!navFootBlocked(ox, nz, 0.42)) { b.mesh.position.z = nz; }
+  else return 0;
+  // gentle separation so bots don't stack on the same lane
+  for (const o of bots) {
+    if (o === b || !o.alive) continue;
+    const sx = b.mesh.position.x - o.mesh.position.x, sz = b.mesh.position.z - o.mesh.position.z;
+    const d = Math.hypot(sx, sz);
+    if (d > 0.01 && d < 1.1) {
+      const push = (1.1 - d) * 0.5;
+      const px = b.mesh.position.x + (sx / d) * push, pz = b.mesh.position.z + (sz / d) * push;
+      if (!navFootBlocked(px, pz, 0.42)) { b.mesh.position.x = px; b.mesh.position.z = pz; }
+    }
+  }
+  return Math.hypot(b.mesh.position.x - ox, b.mesh.position.z - oz);
+}
+function botSetObjective(b, force) {
+  if (b.objective && !force) return b.objective;
+  if (b.team === 'T') {
+    const r = Math.random();
+    if (r < 0.42) b.objective = { x: -20 + (Math.random() - 0.5) * 8, z: 18 + (Math.random() - 0.5) * 8, kind: 'A' };
+    else if (r < 0.84) b.objective = { x: 20 + (Math.random() - 0.5) * 8, z: -18 + (Math.random() - 0.5) * 8, kind: 'B' };
+    else b.objective = { x: (Math.random() - 0.5) * 10, z: (Math.random() - 0.5) * 10, kind: 'mid' };
+  } else {
+    const r = Math.random();
+    if (r < 0.4) b.objective = { x: -20 + (Math.random() - 0.5) * 10, z: 16 + (Math.random() - 0.5) * 10, kind: 'guardA' };
+    else if (r < 0.8) b.objective = { x: 16 + (Math.random() - 0.5) * 10, z: -14 + (Math.random() - 0.5) * 10, kind: 'guardB' };
+    else b.objective = { x: (Math.random() - 0.5) * 16, z: 8 + (Math.random() - 0.5) * 10, kind: 'mid' };
+  }
+  return b.objective;
+}
+function botRequestPath(b, tx, tz, force) {
+  if (!force && b.repathCd > 0) return;
+  b.repathCd = 1.2 + Math.random() * 0.8;
+  // stagger heavy A* so all bots never replan on the same frame
+  const p = navFindPath(b.mesh.position.x, b.mesh.position.z, tx, tz);
+  if (p && p.length) { b.path = p; b.pathI = 0; b.stuckT = 0; }
+}
+function botFollowPath(b, dt) {
+  if (!b.path || b.pathI >= b.path.length) return 0;
+  let node = b.path[b.pathI];
+  // lookahead: skip nodes we can already walk to / are standing on
+  while (node && Math.hypot(node.x - b.mesh.position.x, node.z - b.mesh.position.z) < 1.1) {
+    b.pathI++;
+    node = b.path[b.pathI];
+  }
+  if (!node) return 0;
+  // skip a further node when the segment is clear (cuts corner wobble)
+  const nxt = b.path[b.pathI + 1];
+  if (nxt && navSegmentFree(b.mesh.position.x, b.mesh.position.z, nxt.x, nxt.z)) { b.pathI++; node = nxt; }
+  const dx = node.x - b.mesh.position.x, dz = node.z - b.mesh.position.z;
+  const d = Math.hypot(dx, dz) || 1;
+  b.mesh.lookAt(b.mesh.position.x + dx / d, 0, b.mesh.position.z + dz / d);
+  const step = Math.min(b.speed * dt, d);
+  return navTryStep(b, (dx / d) * step, (dz / d) * step);
+}
+function botTrackStuck(b, moved, dt) {
+  if (moved < 0.25 * b.speed * dt + 0.004) b.stuckT += dt;
+  else b.stuckT = Math.max(0, b.stuckT - dt * 2);
+  if (b.stuckT > 0.7) {
+    b.stuckCount = (b.stuckCount || 0) + 1;
+    b.stuckT = 0;
+    // sidestep perpendicular (alternate sides) then force a fresh route
+    const f = b.mesh.getWorldDirection(new THREE.Vector3()); f.y = 0; f.normalize();
+    const s = (b.stuckCount % 2 === 0 ? 1 : -1) * 1.6;
+    navTryStep(b, -f.z * s, f.x * s);
+    if (b.path) b.pathI = Math.min(b.path.length, b.pathI + 1);
+    const o = botSetObjective(b);
+    botRequestPath(b, o.x, o.z, true);
+    return true;
+  }
+  return false;
+}
+window.__botDebug = () => bots.map((b) => ({
+  team: b.team, alive: b.alive,
+  pos: [+b.mesh.position.x.toFixed(1), +b.mesh.position.z.toFixed(1)],
+  obj: b.objective?.kind, pathLen: b.path?.length ?? 0, pathI: b.pathI ?? 0,
+}));
+
 // ---------------- audio (procedural) ----------------
 let AC = null;
 function audio() { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); return AC; }
@@ -247,7 +467,11 @@ function spawnBot(team, x, z) {
     team, mesh, hp: 100, alive: true, respawnT: 0,
     target: new THREE.Vector3((Math.random() - 0.5) * 40, 0, (Math.random() - 0.5) * 40),
     shootCd: Math.random() * 2, strafe: Math.random() * 6.28, speed: 2.6 + Math.random() * 1.2,
+    path: null, pathI: 0, repathCd: Math.random(), stuckT: 0, stuckCount: 0,
+    objective: null, holdT: 0, combatGoal: null,
   };
+  botSetObjective(b, true);
+  botRequestPath(b, b.objective.x, b.objective.z, true);
   bots.push(b); return b;
 }
 const ENEMY_SPAWNS = [[20, -24], [24, -20], [16, -24], [22, -12]];
@@ -373,6 +597,10 @@ function resetRound(msg) {
     const sp = b.team === 'T' ? ENEMY_SPAWNS[Math.floor(Math.random() * ENEMY_SPAWNS.length)]
       : MATE_SPAWNS[Math.floor(Math.random() * MATE_SPAWNS.length)];
     b.mesh.position.set(sp[0] + Math.random() * 2, 0, sp[1] + Math.random() * 2);
+    b.path = null; b.pathI = 0; b.repathCd = Math.random() * 0.5;
+    b.stuckT = 0; b.stuckCount = 0; b.holdT = 0; b.combatGoal = null;
+    botSetObjective(b, true);
+    botRequestPath(b, b.objective.x, b.objective.z, true);
   });
   roundT = 120; roundLive = true; started = true;
   const rm = document.getElementById('roundmsg');
@@ -547,6 +775,27 @@ function step() {
       if (seen && foe) {
         // face foe
         b.mesh.lookAt(foePos.x, 0, foePos.z);
+        b.repathCd = Math.max(b.repathCd - dt, 0);
+        // push up the lane when far: route toward the contact with A* but keep
+        // eyes on the enemy so bots advance through doors/around crates blind-safe
+        if (best > 9) {
+          const gx = foePos.x, gz = foePos.z;
+          if (!b.combatGoal || Math.hypot(b.combatGoal.x - gx, b.combatGoal.z - gz) > 3) {
+            b.combatGoal = { x: gx, z: gz };
+            botRequestPath(b, gx, gz, true);
+          } else botRequestPath(b, gx, gz, false);
+          const moved = botFollowPath(b, dt);
+          botTrackStuck(b, moved, dt);
+        } else {
+          b.combatGoal = null;
+          // close range: strafe-orbit to be harder to hit, sliding along walls
+          b.strafe += dt * 2.2;
+          const sdir = Math.sin(b.strafe) > 0 ? 1 : -1;
+          const fx = (foePos.x - b.mesh.position.x), fz = (foePos.z - b.mesh.position.z);
+          const fl = Math.hypot(fx, fz) || 1;
+          navTryStep(b, (-fz / fl) * sdir * b.speed * 0.55 * dt, (fx / fl) * sdir * b.speed * 0.55 * dt);
+          b.mesh.lookAt(foePos.x, 0, foePos.z);
+        }
         b.shootCd -= dt;
         if (b.shootCd <= 0) {
           b.shootCd = 0.7 + Math.random() * 0.9;
@@ -562,20 +811,33 @@ function step() {
           } else if (foePos) puff(foePos.clone().add(new THREE.Vector3((Math.random()-0.5)*2, 0, (Math.random()-0.5)*2)));
         }
       } else {
-        // wander toward target
-        if (b.mesh.position.distanceTo(b.target) < 2)
-          b.target.set((Math.random() - 0.5) * 44, 0, (Math.random() - 0.5) * 44);
-        const d = b.target.clone().sub(b.mesh.position); d.y = 0;
-        if (d.length() > 0.2) {
-          d.normalize();
-          b.mesh.lookAt(b.mesh.position.x + d.x, 0, b.mesh.position.z + d.z);
-          const stepV = d.multiplyScalar(b.speed * dt);
-          const np = b.mesh.position.clone().add(stepV);
-          const box = new THREE.Box3(new THREE.Vector3(np.x - 0.4, 0, np.z - 0.4), new THREE.Vector3(np.x + 0.4, 2, np.z + 0.4));
-          let hit = false;
-          for (const c of colliders) if (box.intersectsBox(c)) { hit = true; break; }
-          if (!hit) b.mesh.position.copy(np);
-          else b.target.set((Math.random() - 0.5) * 44, 0, (Math.random() - 0.5) * 44);
+        // no line of sight: march the A* lane toward the team objective.
+        // re-route periodically (lanes stay fresh as fights move) and hold /
+        // scan when the objective is reached instead of jittering in place.
+        b.combatGoal = null;
+        b.repathCd -= dt;
+        const o = botSetObjective(b);
+        const arrivedDist = Math.hypot(o.x - b.mesh.position.x, o.z - b.mesh.position.z);
+        if (arrivedDist < 2.5) {
+          b.holdT += dt;
+          b.mesh.rotation.y += dt * 0.7; // scan for contacts while holding
+          if (b.holdT > 4 + (b.team === 'CT' ? 4 : 0)) {
+            b.holdT = 0;
+            if (b.team === 'T' || Math.random() < 0.6) botSetObjective(b, true);
+            else { // CT patrol: swing between site hold and mid
+              b.objective = { x: (Math.random() - 0.5) * 16, z: 8 + (Math.random() - 0.5) * 10, kind: 'patrol' };
+            }
+            botRequestPath(b, b.objective.x, b.objective.z, true);
+          }
+        } else {
+          b.holdT = 0;
+          botRequestPath(b, o.x, o.z, false);
+          const moved = botFollowPath(b, dt);
+          if (!botTrackStuck(b, moved, dt) && moved === 0) {
+            // no route progress at all: force a fresh objective + route
+            botSetObjective(b, true);
+            botRequestPath(b, b.objective.x, b.objective.z, true);
+          }
         }
       }
       // mate bots help: same logic already targets T
