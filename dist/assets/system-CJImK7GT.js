@@ -1,1 +1,0 @@
-import{aj as r,am as i,r as f,G as a}from"./index-DhpHJWj6.js";const S=()=>{const n=r(s=>s.showScans),t=i(s=>s.nodes);return f.useEffect(()=>{(a.byType.scan||new Set).forEach(o=>{const c=a.nodes.get(o),e=t[o];c&&(e==null?void 0:e.type)==="scan"&&(c.visible=n&&e.visible)})},[t,n]),null};export{S as default};

@@ -1,0 +1,1 @@
+import{d as c,ee as l,bf as m}from"./index-DD4JfeHG.js";const d=.08;function u(e,n,s){return c(e,n,s)}function A(e,n,s){var t,r;const i=l(e,n.minX,n.minZ,n.maxX,n.maxZ),o=m({moving:i,candidates:s,threshold:d});return{dx:((t=o.snap)==null?void 0:t.dx)??0,dz:((r=o.snap)==null?void 0:r.dz)??0,guides:o.guides}}export{u as c,A as r};

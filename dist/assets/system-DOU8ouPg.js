@@ -1,1 +1,0 @@
-import{aj as r,r as u,G as o}from"./index-DhpHJWj6.js";const d=()=>{const e=r(s=>s.showGuides);return u.useEffect(()=>{(o.byType.guide||new Set).forEach(i=>{const t=o.nodes.get(i);t&&(t.visible=e)})},[e]),null};export{d as default};
