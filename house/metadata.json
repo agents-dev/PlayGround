@@ -1,0 +1,60 @@
+{
+  "name": "PlayGround House",
+  "source": "https://github.com/pascalorg/editor",
+  "editorPackages": {
+    "@pascal-app/core": "1.0.0",
+    "@pascal-app/viewer": "1.0.0",
+    "@pascal-app/nodes": "1.0.0",
+    "@pascal-app/cli": "1.0.0"
+  },
+  "pascalProject": {
+    "id": "2f2347dd7922",
+    "projectId": "2f2347dd7922",
+    "name": "PlayGround House",
+    "version": 2,
+    "nodeCount": 21,
+    "graphHash": "03bb2721fb99b24c94f8c11fb5a45d35379d4788f980c0ee1c9565af4032ad58",
+    "sizeBytes": 10785,
+    "levelIds": ["level_o4u95ieismjrump7", "level_9psz9mshbapp1a1q"],
+    "defaultLevelId": "level_o4u95ieismjrump7",
+    "localEditorUrl": "http://pascal.localhost:39211/scene/2f2347dd7922",
+    "note": "Local loopback URL from the build machine; run `pascal open 2f2347dd7922` on a machine with the local Pascal data to open it."
+  },
+  "sceneFile": "house/scene.json",
+  "build": {
+    "templateId": "garden-house",
+    "brief": "Single-family garden house 12x8m with living zone, fenced back garden, front door, garden door, windows, gable roof",
+    "steps": [
+      "create_house_from_brief (bedroomCount=3, landscaping=true) => garden-house template, 18 nodes",
+      "create_roof (gable, pitch 35, 12.9x8.9) => +3 nodes (roof level, roof, segment), 21 nodes total",
+      "validate_scene => valid:true",
+      "verify_scene => ok:true, valid:true (expected template advisories: no slabs/ceilings, opening extents)",
+      "check_collisions (0.3m) => checked, 0 collisions",
+      "export_json => house/scene.json"
+    ]
+  },
+  "checks": {
+    "validate_scene": { "valid": true, "errors": [] },
+    "verify_scene": {
+      "ok": true,
+      "valid": true,
+      "hasIssues": true,
+      "issues": [
+        "Level 0 has zones but no slabs/floors",
+        "Level 0 has zones but no ceilings",
+        "door/window extent advisories (garden-house template defaults)"
+      ]
+    },
+    "check_collisions": { "status": "checked", "collisions": [] },
+    "export_glb": "not_implemented in open-source headless MCP server (reported, not claimed)"
+  },
+  "contents": {
+    "footprint": "12m x 8m house centered at origin + 12m x 6m back garden to the north",
+    "walls": 4,
+    "doors": 2,
+    "windows": 4,
+    "zones": 2,
+    "fences": 3,
+    "roof": "1 gable roof on dedicated roof level"
+  }
+}
