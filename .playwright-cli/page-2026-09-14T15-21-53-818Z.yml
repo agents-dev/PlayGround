@@ -1,0 +1,25 @@
+- generic [ref=e2]:
+  - generic:
+    - generic:
+      - generic: 62 FPS
+      - generic: SECTOR 01
+      - generic: KILLS 0/4
+      - generic "total game payload": 27.8KB / 96KB
+    - generic:
+      - generic:
+        - generic: HP
+        - generic: "100"
+      - generic:
+        - generic: ARM
+        - generic: "0"
+      - generic:
+        - generic: AMMO
+        - generic: "60"
+      - generic:
+        - generic: GUN
+        - generic: BLASTER
+      - generic:
+        - generic: SCORE
+        - generic: "0"
+    - generic: +
+  - generic: SECTOR 01 — PURGE THE WARDENS

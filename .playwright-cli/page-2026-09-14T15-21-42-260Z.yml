@@ -1,0 +1,37 @@
+- generic [ref=e2]:
+  - generic:
+    - generic:
+      - generic: 58 FPS
+      - generic: SECTOR 01
+      - generic: KILLS 0/0
+      - generic "total game payload": 27.8KB / 96KB
+    - generic:
+      - generic:
+        - generic: HP
+        - generic: "100"
+      - generic:
+        - generic: ARM
+        - generic: "0"
+      - generic:
+        - generic: AMMO
+        - generic: "50"
+      - generic:
+        - generic: GUN
+        - generic: BLASTER
+      - generic:
+        - generic: SCORE
+        - generic: "0"
+    - generic: +
+  - generic [ref=e5]:
+    - generic [ref=e6]: 96 KILOBYTES • PROCEDURAL • NO ASSETS
+    - heading [level=1] [ref=e7]:
+      - text: .kkrieger
+      - emphasis [ref=e8]: fps madness
+    - paragraph [ref=e9]: A tribute to the legendary 2004 96KB FPS by .theprodukkt / Farbrausch. Everything you see & hear — maze, textures, demons, guns, music — is generated at runtime from 27.8KB / 96KB of code. No images. No downloads.
+    - list [ref=e10]:
+      - listitem [ref=e11]: WASD / arrows move · mouse look · click shoot
+      - listitem [ref=e12]: 1 / 2 blaster / scatter · Shift sprint · M music
+      - listitem [ref=e13]: Find the EXIT gate. Kill or dodge the wardens.
+    - button "▶ JACK IN — 27.8KB / 96KB" [ref=e14] [cursor=pointer]
+    - generic [ref=e15]: pointer-lock recommended · 27.8KB / 96KB · WebAudio synth on
+  - generic: SECTOR 01 — PURGE THE WARDENS
