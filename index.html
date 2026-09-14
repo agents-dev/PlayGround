@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>.kkrieger — fps Madness 96KB</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='black'/%3E%3Ctext x='1' y='12' font-size='10' fill='%235cffb1'%3E96%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-testid="kkrieger-96k">
+<div id="wrap">
+  <canvas id="game" width="640" height="400" data-testid="fps-canvas"></canvas>
+  <div id="hud" data-testid="hud">
+    <div class="hud-top">
+      <span id="h-fps">60 FPS</span>
+      <span id="h-level">SECTOR 01</span>
+      <span id="h-kills">KILLS 0/0</span>
+      <span id="h-size" title="total game payload">96KB</span>
+    </div>
+    <div class="hud-bottom">
+      <div class="stat"><label>HP</label><div class="bar"><i id="b-hp"></i></div><b id="h-hp">100</b></div>
+      <div class="stat"><label>ARM</label><div class="bar"><i id="b-arm"></i></div><b id="h-arm">0</b></div>
+      <div class="stat"><label>AMMO</label><b id="h-ammo">50</b></div>
+      <div class="stat"><label>GUN</label><b id="h-gun">BLASTER</b></div>
+      <div class="stat"><label>SCORE</label><b id="h-score">0</b></div>
+    </div>
+    <div id="cross">+</div>
+    <div id="hitmark"></div>
+    <div id="dmg"></div>
+    <canvas id="mini" width="132" height="132" data-testid="minimap"></canvas>
+  </div>
+  <div id="overlay" data-testid="overlay">
+    <div class="card">
+      <div class="eyebrow">96 KILOBYTES • PROCEDURAL • NO ASSETS</div>
+      <h1>.kkr<span>ieger</span> <em>fps madness</em></h1>
+      <p>A tribute to the legendary 2004 <b>96KB FPS</b> by .theprodukkt / Farbrausch.
+      Everything you see &amp; hear — maze, textures, demons, guns, music — is
+      generated at runtime from <b id="size-live">…</b> of code. No images. No downloads.</p>
+      <ul>
+        <li><b>WASD / arrows</b> move · <b>mouse</b> look · <b>click</b> shoot</li>
+        <li><b>1 / 2</b> blaster / scatter · <b>Shift</b> sprint · <b>M</b> music</li>
+        <li>Find the <b class="exit">EXIT gate</b>. Kill or dodge the wardens.</li>
+      </ul>
+      <button id="play" data-testid="play-btn">▶ JACK IN — <span id="size-btn">96KB</span></button>
+      <div class="foot">pointer-lock recommended · <span id="size-foot"></span> · WebAudio synth on</div>
+    </div>
+  </div>
+  <div id="msg" data-testid="msg"></div>
+</div>
+<script src="game.js"></script>
+</body>
+</html>
