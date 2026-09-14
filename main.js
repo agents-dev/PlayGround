@@ -111,6 +111,83 @@ function textSprite(t, x, z) {
 }
 textSprite('A', -20, 18); textSprite('B', 20, -18);
 
+// ---------------- bomb (plant / defuse) ----------------
+const SITES = { A: new THREE.Vector3(-20, 0, 18), B: new THREE.Vector3(20, 0, -18) };
+const SITE_R = 5.5, PLANT_TIME = 3, BOT_DEFUSE_TIME = 6, PLAYER_DEFUSE_TIME = 5, BOMB_TICK = 35;
+const bombMesh = new THREE.Group();
+{
+  const pack = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.35),
+    new THREE.MeshStandardMaterial({ color: 0x2b2b2e, roughness: 0.6 }));
+  pack.position.y = 0.15; pack.castShadow = true; bombMesh.add(pack);
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0xff2222 }));
+  lamp.position.set(0.15, 0.34, 0); lamp.name = 'lamp'; bombMesh.add(lamp);
+}
+const bombLight = new THREE.PointLight(0xff2222, 0, 12);
+bombLight.position.y = 1; bombMesh.add(bombLight);
+bombMesh.visible = false; scene.add(bombMesh);
+const bomb = {
+  state: 'carried', carrier: null, site: 'B', pos: new THREE.Vector3(),
+  plantProg: 0, defuseProg: 0, tickT: 0, beepT: 0, defuser: null,
+};
+let playerDefuse = 0, shakeT = 0, boomFx = null;
+function hideChannel() {
+  document.getElementById('channel-wrap').classList.add('hidden');
+  document.getElementById('defuse-prompt').classList.add('hidden');
+}
+function resetBomb() {
+  const carriers = botAlive('T');
+  bomb.carrier = carriers.length ? carriers[Math.floor(Math.random() * carriers.length)] : null;
+  bomb.site = Math.random() < 0.5 ? 'A' : 'B';
+  bomb.state = bomb.carrier ? 'carried' : 'dropped';
+  if (!bomb.carrier) bomb.pos.set(0, 0.4, 0);
+  bomb.plantProg = 0; bomb.defuseProg = 0; bomb.tickT = 0; bomb.beepT = 0; bomb.defuser = null;
+  bombMesh.visible = false;
+  playerDefuse = 0; hideChannel(); updateHud();
+}
+function dropBombIfCarrier(b) {
+  if (bomb.state === 'carried' && bomb.carrier === b) {
+    bomb.state = 'dropped'; bomb.carrier = null; bomb.plantProg = 0;
+    bomb.pos.copy(b.mesh.position); bomb.pos.y = 0.4;
+    bombMesh.position.copy(bomb.pos); bombMesh.visible = true;
+    killfeed(`💣 bomb <b>DROPPED</b>`);
+    updateHud();
+  }
+}
+function plantBomb(b) {
+  bomb.state = 'planted'; bomb.carrier = null;
+  bomb.pos.copy(b.mesh.position); bomb.pos.y = 0.4;
+  bomb.tickT = BOMB_TICK; bomb.beepT = 0; bomb.defuseProg = 0;
+  bombMesh.position.copy(bomb.pos); bombMesh.visible = true;
+  sfx.plant();
+  killfeed(`💣 <b style="color:#ffbe6b">T-bot</b> PLANTED at <b>${bomb.site}</b>`);
+  banner(`💣 BOMB PLANTED at ${bomb.site} — DEFUSE IT (hold E)`);
+  updateHud();
+}
+function detonateBomb() {
+  explosionFx(bomb.pos);
+  sfx.explosion();
+  killfeed(`💥 <b>BOMB DETONATED</b> at ${bomb.site}`);
+  bombMesh.visible = false; hideChannel();
+  endRound('T', '💥 T WIN — bomb detonated');
+}
+function defuseWin(byPlayer) {
+  sfx.defuse();
+  killfeed(`💣 BOMB DEFUSED${byPlayer ? ' by <b style="color:#7cc4ff">YOU</b>' : ' by <b style="color:#7cc4ff">CT-bot</b>'}`);
+  bombMesh.visible = false; hideChannel();
+  if (byPlayer) player.money += 300;
+  endRound('CT', '💣 CT WIN — bomb defused');
+}
+function explosionFx(p) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0xff8830, transparent: true, opacity: 0.95 }));
+  m.position.copy(p); scene.add(m);
+  const l = new THREE.PointLight(0xff7722, 30, 45);
+  l.position.set(p.x, p.y + 2, p.z); scene.add(l);
+  boomFx = { m, l, t: 0.9 };
+  shakeT = 0.7;
+}
+
 // ---------------- audio (procedural) ----------------
 let AC = null;
 function audio() { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); return AC; }
@@ -132,6 +209,10 @@ const sfx = {
   reload: () => boom(500, 0.09, 0.15, 'square', 200),
   dry: () => boom(1400, 0.05, 0.12, 'square'),
   round: () => { boom(440, 0.25, 0.2, 'triangle'); setTimeout(() => boom(660, 0.3, 0.2, 'triangle'), 180); },
+  beep: () => boom(1200, 0.08, 0.2, 'square'),
+  plant: () => { boom(300, 0.15, 0.2, 'square', 150); setTimeout(() => boom(450, 0.2, 0.2, 'square', 150), 160); },
+  defuse: () => { boom(600, 0.12, 0.2, 'triangle', 300); setTimeout(() => boom(900, 0.25, 0.2, 'triangle'), 140); },
+  explosion: () => { boom(60, 1.2, 0.4, 'sawtooth', -30); boom(45, 1.5, 0.35, 'square', -15); },
 };
 
 // ---------------- weapons ----------------
@@ -256,6 +337,27 @@ ENEMY_SPAWNS.forEach(([x, z]) => spawnBot('T', x, z));
 MATE_SPAWNS.forEach(([x, z]) => spawnBot('CT', x, z));
 
 function botAlive(team) { return bots.filter((b) => b.team === team && b.alive); }
+function botGoto(b, dest, dt) {
+  const d = dest.clone().sub(b.mesh.position); d.y = 0;
+  if (d.length() < 0.8) return true;
+  d.normalize();
+  const base = Math.atan2(d.x, d.z);
+  // try straight, then slide along obstacles at increasing angles
+  for (const off of [0, 0.5, -0.5, 1.0, -1.0, 1.6, -1.6]) {
+    const a = base + off;
+    const dir = new THREE.Vector3(Math.sin(a), 0, Math.cos(a));
+    const np = b.mesh.position.clone().add(dir.multiplyScalar(b.speed * dt));
+    const box = new THREE.Box3(new THREE.Vector3(np.x - 0.4, 0, np.z - 0.4), new THREE.Vector3(np.x + 0.4, 2, np.z + 0.4));
+    let hit = false;
+    for (const c of colliders) if (box.intersectsBox(c)) { hit = true; break; }
+    if (!hit) {
+      b.mesh.position.copy(np);
+      b.mesh.lookAt(b.mesh.position.x + dir.x, 0, b.mesh.position.z + dir.z);
+      return off === 0;
+    }
+  }
+  return false;
+}
 
 // ---------------- combat ----------------
 const ray = new THREE.Raycaster();
@@ -337,6 +439,8 @@ function hurtBot(b, dmg, head, byPlayer) {
   b.hp -= dmg; hitmark(); sfx.hit(); puff(b.mesh.position.clone().add(new THREE.Vector3(0, 1.3, 0)), 0xaa2222);
   if (b.hp <= 0 && b.alive) {
     b.alive = false;
+    dropBombIfCarrier(b);
+    if (bomb.defuser === b) { bomb.defuser = null; bomb.defuseProg = 0; }
     b.mesh.rotation.x = -Math.PI / 2; b.mesh.position.y = 0.3;
     killfeed(`${byPlayer ? '<b style="color:#7cc4ff">YOU</b>' : b.team} 🔫 <b style="color:#ffbe6b">${b.team}-bot</b>${head ? ' <i>HEADSHOT</i>' : ''}`);
     if (byPlayer) { player.money += head ? 400 : 300; }
@@ -374,26 +478,36 @@ function resetRound(msg) {
       : MATE_SPAWNS[Math.floor(Math.random() * MATE_SPAWNS.length)];
     b.mesh.position.set(sp[0] + Math.random() * 2, 0, sp[1] + Math.random() * 2);
   });
+  botAlive('CT').forEach((m, i) => m.guard = i % 2 ? 'B' : 'A'); // CT mates each guard a site
+  resetBomb();
   roundT = 120; roundLive = true; started = true;
   const rm = document.getElementById('roundmsg');
   rm.textContent = msg || `ROUND ${roundNum} — GO`;
   setTimeout(() => { if (rm.textContent.startsWith('ROUND')) rm.textContent = ''; }, 2500);
   updateHud();
 }
+function endRound(winner, reason) {
+  if (!roundLive) return;
+  roundLive = false;
+  if (winner === 'CT') { ctWins++; player.money += 1400; }
+  else tWins++;
+  banner(reason); sfx.round(); updateHud();
+  if (ctWins >= WIN_SCORE || tWins >= WIN_SCORE) {
+    setTimeout(() => { banner(ctWins > tWins ? '🏆 CT VICTORY' : '🏆 T VICTORY'); }, 1200);
+    setTimeout(() => { ctWins = 0; tWins = 0; roundNum = 1; resetRound('NEW MATCH — GO'); }, 4500);
+  } else { roundNum++; setTimeout(() => resetRound(), 3000); }
+}
 function checkRoundEnd() {
   if (!roundLive) return;
-  const t = botAlive('T').length, ctBots = botAlive('CT').length;
-  const ctAlive = (player.alive ? 1 : 0) + ctBots;
-  if (t === 0 || ctAlive === 0) {
-    roundLive = false;
-    if (t === 0) { ctWins++; player.money += 1400; banner(`CT WIN — site held`); }
-    else { tWins++; banner(`T WIN — site taken`); }
-    sfx.round(); updateHud();
-    if (ctWins >= WIN_SCORE || tWins >= WIN_SCORE) {
-      setTimeout(() => { banner(ctWins > tWins ? '🏆 CT VICTORY' : '🏆 T VICTORY'); }, 1200);
-      setTimeout(() => { ctWins = 0; tWins = 0; roundNum = 1; resetRound('NEW MATCH — GO'); }, 4500);
-    } else { roundNum++; setTimeout(() => resetRound(), 3000); }
+  const t = botAlive('T').length;
+  const ctAlive = (player.alive ? 1 : 0) + botAlive('CT').length;
+  if (bomb.state === 'planted') {
+    // planted bomb decides: CT must defuse; T already wins if no CT left alive
+    if (ctAlive === 0) endRound('T', 'T WIN — no defuse possible');
+    return;
   }
+  if (t === 0) endRound('CT', 'CT WIN — site held');
+  else if (ctAlive === 0) endRound('T', 'T WIN — site taken');
 }
 function banner(t) { document.getElementById('roundmsg').textContent = t; }
 function hurtPlayer(dmg) {
@@ -402,7 +516,7 @@ function hurtPlayer(dmg) {
   player.armor -= absorbed; player.hp -= (dmg - absorbed * 0.5);
   sfx.hurt(); damageFlash();
   if (player.hp <= 0) {
-    player.hp = 0; player.alive = false;
+    player.hp = 0; player.alive = false; playerDefuse = 0; hideChannel();
     killfeed(`<b style="color:#ffbe6b">T-bot</b> 🔫 <b style="color:#7cc4ff">YOU</b>`);
     banner('YOU DIED — spectating');
     checkRoundEnd();
@@ -450,8 +564,19 @@ function updateHud() {
   document.getElementById('weapon-name').textContent = weapon.name;
   document.getElementById('ct-wins').textContent = ctWins;
   document.getElementById('t-wins').textContent = tWins;
-  const m = Math.floor(Math.max(0, roundT) / 60), s = Math.floor(Math.max(0, roundT) % 60);
-  document.getElementById('timer').textContent = `${m}:${String(s).padStart(2, '0')}`;
+  if (bomb.state === 'planted') {
+    document.getElementById('timer').textContent = `💣 0:${String(Math.max(0, Math.ceil(bomb.tickT))).padStart(2, '0')}`;
+  } else {
+    const m = Math.floor(Math.max(0, roundT) / 60), s = Math.floor(Math.max(0, roundT) % 60);
+    document.getElementById('timer').textContent = `${m}:${String(s).padStart(2, '0')}`;
+  }
+  const bs = document.getElementById('bomb-status');
+  if (bs) {
+    if (bomb.state === 'carried') bs.textContent = `💣 T pushing → ${bomb.site}`;
+    else if (bomb.state === 'dropped') bs.textContent = `💣 BOMB DROPPED — T recovering`;
+    else if (bomb.state === 'planted') bs.textContent = `💣 PLANTED ${bomb.site} — ${Math.max(0, Math.ceil(bomb.tickT))}s — HOLD E NEAR IT`;
+    bs.style.color = bomb.state === 'planted' ? '#ff6b5e' : '#ffd47a';
+  }
 }
 function drawMinimap() {
   const cv = document.getElementById('minimap'), c = cv.getContext('2d');
@@ -466,6 +591,11 @@ function drawMinimap() {
   };
   bots.forEach((b) => { if (b.alive) dot(b.mesh.position.x, b.mesh.position.z, b.team === 'T' ? '#ff6b5e' : '#5eb1ff'); });
   if (player.alive) dot(player.pos.x, player.pos.z, '#39ff7a', true);
+  if (bomb.state === 'planted') {
+    if (Math.floor(performance.now() / 300) % 2 === 0) dot(bomb.pos.x, bomb.pos.z, '#ff2222', true);
+  } else if (bomb.state === 'dropped') dot(bomb.pos.x, bomb.pos.z, '#ff9d2e', true);
+  else if (bomb.state === 'carried' && bomb.carrier && bomb.carrier.alive)
+    dot(bomb.carrier.mesh.position.x, bomb.carrier.mesh.position.z, '#ff9d2e');
 }
 
 // ---------------- loop ----------------
@@ -515,14 +645,94 @@ function step() {
   // bots AI
   if (roundLive) {
     roundT -= dt;
-    if (roundT <= 0) { // time -> CT win
-      roundLive = false; ctWins++; banner('TIME — CT WIN'); sfx.round(); updateHud();
-      roundNum++; setTimeout(() => resetRound(), 3000);
+    if (roundT <= 0) { // time -> CT win, unless the bomb is planted (then it decides)
+      if (bomb.state === 'planted') roundT = 0;
+      else endRound('CT', 'TIME — CT WIN');
     }
+    // planted bomb countdown
+    if (roundLive && bomb.state === 'planted') {
+      bomb.tickT -= dt;
+      bomb.beepT -= dt;
+      if (bomb.beepT <= 0) { sfx.beep(); bomb.beepT = Math.max(0.15, bomb.tickT / BOMB_TICK); }
+      if (bomb.tickT <= 0) detonateBomb();
+    }
+    // player defuse: hold E near the planted bomb
+    if (roundLive && bomb.state === 'planted' && player.alive) {
+      const near = Math.hypot(player.pos.x - bomb.pos.x, player.pos.z - bomb.pos.z) < 3.2;
+      document.getElementById('defuse-prompt').classList.toggle('hidden', !near);
+      if (near && keys.KeyE) {
+        playerDefuse += dt;
+        if (Math.floor(playerDefuse * 3) !== Math.floor((playerDefuse - dt) * 3)) sfx.beep();
+        if (playerDefuse >= PLAYER_DEFUSE_TIME) { playerDefuse = 0; defuseWin(true); }
+      } else playerDefuse = Math.max(0, playerDefuse - dt * 2);
+      const chW = document.getElementById('channel-wrap');
+      if (playerDefuse > 0 || near) {
+        chW.classList.remove('hidden');
+        document.getElementById('channel-fill').style.width = `${Math.min(100, playerDefuse / PLAYER_DEFUSE_TIME * 100)}%`;
+        document.getElementById('channel-label').textContent = `DEFUSING… ${Math.max(0, Math.ceil(PLAYER_DEFUSE_TIME - playerDefuse))}s`;
+      } else chW.classList.add('hidden');
+    } else if (!roundLive) hideChannel();
     for (const b of bots) {
       if (!b.alive) continue;
       b.strafe += dt;
+      // ----- bomb orders -----
+      let holdPos = false, orderDest = null;
+      if (b.team === 'T') {
+        if (bomb.state === 'carried' && bomb.carrier === b) {
+          const s = SITES[bomb.site];
+          const dSite = Math.hypot(b.mesh.position.x - s.x, b.mesh.position.z - s.z);
+          if (dSite < SITE_R) {
+            holdPos = true; // planting — stand still, channel
+            b.mesh.lookAt(s.x, 0, s.z);
+            bomb.plantProg += dt;
+            if (Math.floor(bomb.plantProg * 4) !== Math.floor((bomb.plantProg - dt) * 4)) sfx.beep();
+            if (bomb.plantProg >= PLANT_TIME) plantBomb(b);
+          } else orderDest = s;
+        } else if (bomb.state === 'dropped') {
+          let best = null, bd = 1e9;
+          for (const t of botAlive('T')) { const d = t.mesh.position.distanceTo(bomb.pos); if (d < bd) { bd = d; best = t; } }
+          if (best === b) {
+            if (bd < 1.8) {
+              bomb.state = 'carried'; bomb.carrier = b; bomb.plantProg = 0;
+              bombMesh.visible = false;
+              killfeed(`💣 <b style="color:#ffbe6b">T-bot</b> picked up the bomb`);
+              updateHud();
+            } else orderDest = bomb.pos;
+          } else if (bomb.carrier && bomb.carrier.alive) {
+            orderDest = bomb.carrier.mesh.position;
+          }
+        } else if (bomb.state === 'planted') {
+          const a = b.strafe * 0.6 + b.speed; // defend ring around the bomb
+          orderDest = new THREE.Vector3(bomb.pos.x + Math.cos(a) * 5, 0, bomb.pos.z + Math.sin(a) * 5);
+        } else if (bomb.carrier && bomb.carrier.alive && bomb.carrier !== b) {
+          const c = bomb.carrier.mesh.position; // escort the carrier
+          orderDest = new THREE.Vector3(c.x + Math.cos(b.strafe * 0.5) * 3, 0, c.z + Math.sin(b.strafe * 0.5) * 3);
+        }
+      } else {
+        if (bomb.state === 'planted') {
+          let best = null, bd = 1e9; // nearest mate defuses, rest retake
+          for (const m of botAlive('CT')) { const d = m.mesh.position.distanceTo(bomb.pos); if (d < bd) { bd = d; best = m; } }
+          bomb.defuser = best;
+          if (best === b) {
+            if (bd < 2.2) {
+              holdPos = true;
+              b.mesh.lookAt(bomb.pos.x, 0, bomb.pos.z);
+              bomb.defuseProg += dt;
+              if (bomb.defuseProg >= BOT_DEFUSE_TIME) defuseWin(false);
+            } else orderDest = bomb.pos;
+          } else {
+            const a = b.strafe * 0.7;
+            orderDest = new THREE.Vector3(bomb.pos.x + Math.cos(a) * 6, 0, bomb.pos.z + Math.sin(a) * 6);
+          }
+        } else {
+          orderDest = SITES[b.guard || 'A']; // guard assigned site
+        }
+      }
       // pick target: player if CT... enemies target player + CT bots; mates target T bots
+      // stuck detour: if ordered movement made no progress, sidestep briefly
+      if (!holdPos && b.detour && b.detour.t > 0) {
+        b.detour.t -= dt; orderDest = b.detour.p;
+      }
       let foe = null, foePos = null;
       const candidates = [];
       if (b.team === 'T') {
@@ -544,7 +754,7 @@ function step() {
         const block = ray.intersectObjects(solids, false);
         seen = !(block.length && block[0].distance < dist - 0.6) && dist < 55;
       }
-      if (seen && foe) {
+      if (seen && foe && !holdPos) {
         // face foe
         b.mesh.lookAt(foePos.x, 0, foePos.z);
         b.shootCd -= dt;
@@ -557,9 +767,26 @@ function step() {
           if (Math.random() < hitChance) {
             if (foe.isP) hurtPlayer(8 + Math.random() * 14);
             else { foe.bot.hp -= 20 + Math.random() * 20; puff(foePos, 0xaa2222);
-              if (foe.bot.hp <= 0 && foe.bot.alive) { foe.bot.alive = false; foe.bot.mesh.rotation.x = -Math.PI / 2; foe.bot.mesh.position.y = 0.3;
-                killfeed(`<b style="color:#ffbe6b">T-bot</b> 🔫 <b style="color:#7cc4ff">CT-bot</b>`); checkRoundEnd(); } }
+              if (foe.bot.hp <= 0 && foe.bot.alive) {
+                foe.bot.alive = false; foe.bot.mesh.rotation.x = -Math.PI / 2; foe.bot.mesh.position.y = 0.3;
+                dropBombIfCarrier(foe.bot);
+                if (bomb.defuser === foe.bot) { bomb.defuser = null; bomb.defuseProg = 0; }
+                const kCol = b.team === 'T' ? '#ffbe6b' : '#7cc4ff';
+                const vCol = b.team === 'T' ? '#7cc4ff' : '#ffbe6b';
+                killfeed(`<b style="color:${kCol}">${b.team}-bot</b> 🔫 <b style="color:${vCol}">${foe.bot.team}-bot</b>`);
+                checkRoundEnd(); } }
           } else if (foePos) puff(foePos.clone().add(new THREE.Vector3((Math.random()-0.5)*2, 0, (Math.random()-0.5)*2)));
+        }
+      } else if (holdPos) {
+        // channeling plant/defuse — stand still
+      } else if (orderDest) {
+        if (!b.lastPos) { b.lastPos = b.mesh.position.clone(); b.stuckT = 0; }
+        botGoto(b, orderDest, dt);
+        if (b.mesh.position.distanceTo(b.lastPos) < Math.max(0.02, b.speed * dt * 0.35)) b.stuckT += dt;
+        else { b.stuckT = 0; b.lastPos.copy(b.mesh.position); }
+        if (b.stuckT > 1.2) { // sidestep waypoint for 1s to unstick
+          b.detour = { p: new THREE.Vector3(b.mesh.position.x + (Math.random() - 0.5) * 12, 0, b.mesh.position.z + (Math.random() - 0.5) * 12), t: 1.0 };
+          b.stuckT = 0; b.lastPos.copy(b.mesh.position);
         }
       } else {
         // wander toward target
@@ -597,6 +824,28 @@ function step() {
     if (puffs[i].t <= 0) { scene.remove(puffs[i].m); puffs.splice(i, 1); }
   }
 
+  // explosion fx
+  if (boomFx) {
+    boomFx.t -= dt;
+    boomFx.m.scale.multiplyScalar(1.18);
+    boomFx.m.material.opacity = Math.max(0, boomFx.t);
+    boomFx.l.intensity = Math.max(0, boomFx.t * 30);
+    if (boomFx.t <= 0) { scene.remove(boomFx.m); scene.remove(boomFx.l); boomFx = null; }
+  }
+  // bomb blink
+  if (bombMesh.visible) {
+    const on = Math.floor(now / (bomb.state === 'planted' ? 150 : 500)) % 2 === 0;
+    bombLight.intensity = on ? 6 : 0.4;
+    const lamp = bombMesh.getObjectByName('lamp');
+    if (lamp) lamp.visible = on;
+  }
+  // explosion camera shake (locked play only, so no drift when spectating)
+  if (shakeT > 0 && locked) {
+    shakeT -= dt;
+    camera.position.x += (Math.random() - 0.5) * shakeT * 1.4;
+    camera.position.y += (Math.random() - 0.5) * shakeT * 1.4;
+  }
+
   renderer.render(scene, camera);
   if (!window.__sceneReady) {
     window.__sceneReady = true;
@@ -614,4 +863,5 @@ addEventListener('resize', () => {
 resetRound('ROUND 1 — CLICK DEPLOY');
 roundLive = true;
 updateHud(); drawMinimap();
+window.__game = { bomb, player, bots, SITES, get roundLive() { return roundLive; } };
 step();

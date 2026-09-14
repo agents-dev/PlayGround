@@ -21,6 +21,7 @@
       <div id="timer">2:00</div>
       <div id="score-t"><b id="t-wins">0</b> T</div>
     </div>
+    <div id="bomb-status">💣 T pushing → B</div>
     <div id="crosshair"><span class="l t"></span><span class="l b"></span><span class="l l"></span><span class="l r"></span><span class="dot"></span></div>
     <div id="hitmarker"></div>
     <div id="killfeed"></div>
@@ -30,6 +31,8 @@
       <div id="roundmsg"></div>
       <div id="ammo"><span id="mag">30</span><span id="reserve">/ 90</span><div id="weapon-name">AK-47</div></div>
     </div>
+    <div id="channel-wrap" class="hidden"><div id="channel-label">DEFUSING…</div><div id="channel-track"><div id="channel-fill"></div></div></div>
+    <div id="defuse-prompt" class="hidden">HOLD <b>E</b> TO DEFUSE</div>
     <div id="damage-vignette"></div>
     <div id="buy-menu" class="hidden">
       <h3>BUY MENU [B]</h3>
@@ -45,10 +48,10 @@
     <div class="panel">
       <div class="eyebrow">BROWSER FPS • THREE.JS</div>
       <h1>COUNTER<span>STRIKE</span></h1>
-      <p class="sub">De-Dust prototype — CT vs T • first to 5 rounds • bots included</p>
+      <p class="sub">De-Dust prototype — CT vs T • first to 5 rounds • bomb plant/defuse • bots included</p>
       <ul class="controls">
         <li><b>WASD</b> move &nbsp; <b>Mouse</b> look &nbsp; <b>Click</b> shoot</li>
-        <li><b>R</b> reload &nbsp; <b>B</b> buy menu &nbsp; <b>1/2/3</b> weapons &nbsp; <b>Right-click</b> aim</li>
+        <li><b>R</b> reload &nbsp; <b>B</b> buy menu &nbsp; <b>1/2/3</b> weapons &nbsp; <b>Right-click</b> aim &nbsp; <b>E</b> defuse (hold near bomb)</li>
       </ul>
       <button id="play">▶ &nbsp;CLICK TO DEPLOY</button>
       <div id="load-status">loading three.js…</div>
