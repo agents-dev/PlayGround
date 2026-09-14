@@ -1,0 +1,1 @@
+import{aj as n,r as i,F as u,G as l,j as c}from"./index-WX5ej5KS.js";function p({children:o}){const s=n(e=>e.selection.levelId),r=i.useRef(null);return u(()=>{const e=r.current;if(!e)return;const t=s?l.nodes.get(s):null;e.position.y=t?t.position.y:0}),c.jsx("group",{ref:r,children:o})}export{p as L};

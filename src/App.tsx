@@ -17,19 +17,36 @@ type SceneFile = {
 
 const graph = sceneGraph as unknown as SceneFile;
 
-async function webgpuAvailable(timeoutMs = 8000): Promise<boolean> {
+type GpuProbe = {
+  ok: boolean;
+  /** Lowercased WebGPU backend string (e.g. "metal", "d3d12", "vulkan"), or null. */
+  backend: string | null;
+};
+
+async function probeGpu(timeoutMs = 8000): Promise<GpuProbe> {
+  const none = { ok: false, backend: null };
   try {
     const nav = navigator as Navigator & {
-      gpu?: { requestAdapter: () => Promise<unknown> };
+      gpu?: {
+        requestAdapter: () => Promise<{ info?: { backendType?: unknown } } | null>;
+      };
     };
-    if (!nav.gpu) return false;
+    if (!nav.gpu) return none;
     const adapter = await Promise.race([
       nav.gpu.requestAdapter(),
-      new Promise((resolve) => setTimeout(() => resolve(null), timeoutMs)),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs)),
     ]);
-    return adapter !== null && adapter !== undefined;
+    if (!adapter) return none;
+    let backend: string | null = null;
+    try {
+      const raw = adapter.info?.backendType;
+      if (typeof raw === 'string' && raw.length > 0) backend = raw.toLowerCase();
+    } catch {
+      backend = null;
+    }
+    return { ok: true, backend };
   } catch {
-    return false;
+    return none;
   }
 }
 
@@ -70,7 +87,7 @@ function HouseSummary() {
 
 export default function App() {
   const [ready, setReady] = useState(false);
-  const [gpu, setGpu] = useState<boolean | null>(null);
+  const [gpu, setGpu] = useState<GpuProbe | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,8 +99,8 @@ export default function App() {
       });
       if (!cancelled) setReady(true);
     });
-    void webgpuAvailable().then((ok) => {
-      if (!cancelled) setGpu(ok);
+    void probeGpu().then((probe) => {
+      if (!cancelled) setGpu(probe);
     });
     return () => {
       cancelled = true;
@@ -92,6 +109,14 @@ export default function App() {
 
   if (!ready || gpu === null)
     return <div style={{ padding: 24, fontFamily: 'sans-serif' }}>Loading house…</div>;
+
+  // The viewer's TSL post-processing pipeline (SSGI/denoise/ink/outline) hits
+  // a Tint IR backend-compiler bug on Metal ("swizzle view instruction still
+  // has usages after lowering" → invalid RenderPipeline every frame), which
+  // poisons the whole command buffer so nothing presents. Render the scene
+  // directly on Metal; full post-FX stays on elsewhere. The viewer also
+  // honors `?disable=postFx` in the URL as a manual override.
+  const disablePostFx = gpu.backend !== null && gpu.backend.includes('metal');
 
   return (
     <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -110,7 +135,13 @@ export default function App() {
           12 × 8 m garden house · built with pascalorg/editor · 21 nodes
         </span>
       </header>
-      <div style={{ flex: 1, minHeight: 0 }}>{gpu ? <Viewer /> : <HouseSummary />}</div>
+      <div
+        style={{ flex: 1, minHeight: 0 }}
+        data-testid="viewport"
+        data-disable-postfx={disablePostFx}
+      >
+        {gpu.ok ? <Viewer disablePostFx={disablePostFx} /> : <HouseSummary />}
+      </div>
     </div>
   );
 }

@@ -37,6 +37,21 @@ Reopen locally (on the build machine): `pascal open 2f2347dd7922`
 ```bash
 npm install
 npm run validate   # schema check of house/scene.json
-npm run dev        # Vite dev server
+npm run dev        # Vite dev server on http://0.0.0.0:3000
 npm run build      # production build
 ```
+
+The dev server binds `0.0.0.0:3000` with `allowedHosts: true` and `strictPort: true`
+(`vite.config.ts`) so tunnel clients dialing `127.0.0.1:3000` with a public
+hostname (e.g. `*.trycloudflare.com`) are served instead of refused/403.
+
+## Runtime notes
+
+- The Pascal `<Viewer />` needs WebGPU. Without an adapter the app shows a
+  data summary rendered from the same `house/scene.json`.
+- On Metal backends the viewer's TSL post-processing pipeline fails to compile
+  (Tint IR `swizzle view` backend bug → invalid RenderPipeline every frame, so
+  nothing presents). The app therefore passes `disablePostFx` on Metal
+  (`adapter.info.backendType`), keeping full post-FX elsewhere. Appending
+  `?disable=postFx` to the URL forces it off manually on any backend.
+

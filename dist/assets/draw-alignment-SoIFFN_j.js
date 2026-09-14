@@ -1,0 +1,1 @@
+import{h as n,ep as l}from"./index-WX5ej5KS.js";function s(a,e){if(e.bypass)return n.getState().clear(),a;const[r,t]=l([a[0],a[2]],{applySnap:e.applySnap});return[r,a[1],t]}function c(){n.getState().clear()}export{s as a,c};

@@ -1,1 +1,0 @@
-import{dz as t,am as r,G as a}from"./index-DhpHJWj6.js";const o=()=>{let e=t(r);return{commitStep(s){e();try{return s()}finally{e=t(r)}},end(){e()}}},l=({eventWallId:e,eventWallHidden:s,ownWallIds:n})=>s&&!n.includes(e),c=e=>{var s,n;return((n=(s=a.nodes.get(e))==null?void 0:s.userData)==null?void 0:n.wallHidden)===!0};export{o as b,c as i,l as s};

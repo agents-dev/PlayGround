@@ -1,0 +1,1 @@
+import{r as n,al as l,j as t,aG as o,ax as u}from"./index-WX5ej5KS.js";const x=({node:e})=>{const r=n.useRef(null);l(e.id,e.type,r);const a=u(e,"level");return t.jsx("group",{ref:r,...a,children:e.children.map(s=>t.jsx(o,{nodeId:s},s))})};export{x as LevelRenderer,x as default};
