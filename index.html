@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Counter Strike — Browser FPS</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<div id="app">
+  <canvas id="game"></canvas>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div id="topbar">
+      <div id="score-ct">CT <b id="ct-wins">0</b></div>
+      <div id="timer">2:00</div>
+      <div id="score-t"><b id="t-wins">0</b> T</div>
+    </div>
+    <div id="crosshair"><span class="l t"></span><span class="l b"></span><span class="l l"></span><span class="l r"></span><span class="dot"></span></div>
+    <div id="hitmarker"></div>
+    <div id="killfeed"></div>
+    <canvas id="minimap" width="160" height="160"></canvas>
+    <div id="bottombar">
+      <div id="vitals"><div id="hp">100</div><div id="armor-row">🧥 <span id="armor">100</span> &nbsp; 💰 <span id="money">$800</span></div></div>
+      <div id="roundmsg"></div>
+      <div id="ammo"><span id="mag">30</span><span id="reserve">/ 90</span><div id="weapon-name">AK-47</div></div>
+    </div>
+    <div id="damage-vignette"></div>
+    <div id="buy-menu" class="hidden">
+      <h3>BUY MENU [B]</h3>
+      <div><b>1</b> AK-47 Rifle — $2500 <span id="buy1"></span></div>
+      <div><b>2</b> MP5 SMG — $1500</div>
+      <div><b>3</b> AWP Sniper — $4750</div>
+      <div><b>0 / B</b> close</div>
+    </div>
+  </div>
+
+  <!-- Menu -->
+  <div id="menu">
+    <div class="panel">
+      <div class="eyebrow">BROWSER FPS • THREE.JS</div>
+      <h1>COUNTER<span>STRIKE</span></h1>
+      <p class="sub">De-Dust prototype — CT vs T • first to 5 rounds • bots included</p>
+      <ul class="controls">
+        <li><b>WASD</b> move &nbsp; <b>Mouse</b> look &nbsp; <b>Click</b> shoot</li>
+        <li><b>R</b> reload &nbsp; <b>B</b> buy menu &nbsp; <b>1/2/3</b> weapons &nbsp; <b>Right-click</b> aim</li>
+      </ul>
+      <button id="play">▶ &nbsp;CLICK TO DEPLOY</button>
+      <div id="load-status">loading three.js…</div>
+      <div id="scene-ready" style="display:none">ready</div>
+    </div>
+  </div>
+  <div id="pause-tip" class="hidden">paused — click to resume</div>
+</div>
+<script type="module" src="main.js"></script>
+</body>
+</html>
