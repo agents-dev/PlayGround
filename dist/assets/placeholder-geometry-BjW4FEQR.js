@@ -1,0 +1,1 @@
+import{aa as o,ab as t}from"./index-DhpHJWj6.js";function u(a=0){const e=new o;e.userData.placeholder=!0,e.setAttribute("position",new t(new Float32Array(9),3)),e.setAttribute("normal",new t(new Float32Array(9),3)),e.setAttribute("uv",new t(new Float32Array(6),2)),e.setAttribute("uv2",new t(new Float32Array(6),2));for(let r=0;r<a;r++)e.addGroup(0,0,r);return e}export{u as c};
