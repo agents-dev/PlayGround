@@ -217,8 +217,74 @@ ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
   }
 }
 
-/* ============ arena geometry + colliders ============ */
+/* ============ terrain: roads ============ */
+/* AABB colliders shared by arena props and tree trunks */
 const colliders = []; // {min:Vector3,max:Vector3}
+function roadTexture(){
+  const c=document.createElement('canvas'); c.width=128; c.height=512;
+  const g=c.getContext('2d');
+  g.fillStyle='#33363c'; g.fillRect(0,0,128,512);
+  for(let i=0;i<1500;i++){ g.fillStyle=`rgba(${20+Math.random()*30|0},${22+Math.random()*30|0},${26+Math.random()*30|0},.6)`;
+    g.fillRect(Math.random()*128,Math.random()*512,2,2); }
+  // edge lines
+  g.fillStyle='#e8e4d8'; g.fillRect(6,0,5,512); g.fillRect(117,0,5,512);
+  // centre dashes
+  g.fillStyle='#ffd94d';
+  for(let y=0;y<512;y+=64) g.fillRect(60,y+8,8,36);
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4; return t;
+}
+{
+  const roadTex=roadTexture();
+  const roadMat=new THREE.MeshStandardMaterial({ roughness:.95, metalness:0 });
+  const mkRoad=(w,l,x,z,rotY,rep)=>{
+    const tex=roadTex.clone(); tex.needsUpdate=true; tex.repeat.set(1,rep);
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(w,l),
+      new THREE.MeshStandardMaterial({ map:tex, roughness:.95, metalness:0 }));
+    m.rotation.x=-Math.PI/2; m.rotation.z=rotY; m.position.set(x,0.02,z);
+    m.receiveShadow=true; scene.add(m);
+  };
+  // cross through the arena centre (flat: walkable, no colliders)
+  mkRoad(6,220, 0,0, 0, 22);            // north–south
+  mkRoad(6,220, 0,0, Math.PI/2, 22);    // east–west
+  // centre plaza disc where the roads meet
+  const plaza=new THREE.Mesh(new THREE.CircleGeometry(5.2,28),
+    new THREE.MeshStandardMaterial({ color:0x3a3d44, roughness:.95 }));
+  plaza.rotation.x=-Math.PI/2; plaza.position.set(0,0.03,0); plaza.receiveShadow=true; scene.add(plaza);
+}
+
+/* ============ terrain: trees ============ */
+const trunkMat=new THREE.MeshStandardMaterial({ color:0x6b4a2b, roughness:.9 });
+const leafMats=[0x2f7a33,0x3a8f3e,0x27632c].map(c=>new THREE.MeshStandardMaterial({ color:c, roughness:.85, flatShading:true }));
+const trunkGeo=new THREE.CylinderGeometry(.28,.42,2.2,8);
+const coneGeo=new THREE.ConeGeometry(1.9,2.6,8);
+const coneGeo2=new THREE.ConeGeometry(1.4,2.0,8);
+let treeCount=0;
+function makeTree(x,z,s=1,leaf=null){
+  const g=new THREE.Group();
+  const trunk=new THREE.Mesh(trunkGeo,trunkMat); trunk.position.y=1.1; trunk.castShadow=true; g.add(trunk);
+  const lm=leaf ?? leafMats[Math.random()*leafMats.length|0];
+  const c1=new THREE.Mesh(coneGeo,lm); c1.position.y=3.0; c1.castShadow=true; g.add(c1);
+  const c2=new THREE.Mesh(coneGeo2,lm); c2.position.y=4.4; c2.castShadow=true; g.add(c2);
+  g.position.set(x,0,z); g.scale.setScalar(s); g.rotation.y=Math.random()*Math.PI*2;
+  scene.add(g); treeCount++;
+  return g;
+}
+{
+  // pine forest ring outside the walls (scenery, no colliders)
+  let tseed=12345; const trnd=()=> (tseed=(tseed*16807)%2147483647)/2147483647;
+  for(let i=0;i<40;i++){
+    const a=trnd()*Math.PI*2, r=50+trnd()*45;
+    makeTree(Math.cos(a)*r,(Math.sin(a)*r), .9+trnd()*1.3);
+  }
+  // four corner shade trees inside the arena (trunks block movement)
+  [[-32,-32],[32,-32],[-32,32],[32,32]].forEach(([x,z])=>{
+    makeTree(x,z,1.15);
+    colliders.push({min:new THREE.Vector3(x-.5,0,z-.5),max:new THREE.Vector3(x+.5,2.2,z+.5)});
+  });
+}
+
+/* ============ arena geometry + colliders ============ */
 function addBox(w,h,d,x,y,z,color,rough=.8){
   const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d),
     new THREE.MeshStandardMaterial({ color, roughness:rough, metalness:.08 }));
@@ -595,7 +661,8 @@ addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.upd
 
 /* expose for automated checks */
 window.__game = { player, keys, enemies, get playing(){return playing}, get locked(){return locked},
-  start: ()=>startPlay(), spawn: ()=>enemies.forEach(spawnBot), get score(){return score}, version:'arena-strike-1.1' };
+  start: ()=>startPlay(), spawn: ()=>enemies.forEach(spawnBot), get score(){return score},
+  terrain: { get trees(){return treeCount}, roads: 2 }, version:'arena-strike-1.2' };
 </script>
 </body>
 </html>
