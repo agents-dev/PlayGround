@@ -1,0 +1,1 @@
+import{r as i,al as o,j as e,aG as n,ax as u}from"./index-DhpHJWj6.js";const l=({node:r})=>{const t=i.useRef(null);o(r.id,r.type,t);const a=u(r,"building");return e.jsx("group",{position:r.position,ref:t,rotation:[r.rotation[0],r.rotation[1],r.rotation[2]],...a,children:(r.children??[]).map(s=>e.jsx(n,{nodeId:s},s))})};export{l as BuildingRenderer,l as default};
