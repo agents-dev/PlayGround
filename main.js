@@ -223,6 +223,317 @@ const highlight = new THREE.LineSegments(
 highlight.visible = false;
 scene.add(highlight);
 
+// ============ Коровы 🐄 ============
+const COW_COUNT = 8;
+const cows = [];
+const hearts = [];
+const cowGroup = new THREE.Group();
+scene.add(cowGroup);
+
+T.cowHide = canvasTex(g => {
+  g.fillStyle = '#efe9dc'; g.fillRect(0, 0, 16, 16);
+  g.fillStyle = '#7a5233';
+  const blobs = [[2, 2, 5, 4], [10, 8, 4, 5], [3, 11, 4, 3], [11, 1, 4, 3], [0, 7, 2, 3]];
+  for (const [bx, by, w, h] of blobs) g.fillRect(bx, by, w, h);
+  g.fillStyle = 'rgba(0,0,0,0.08)';
+  for (let i = 0; i < 30; i++) g.fillRect((Math.random() * 16) | 0, (Math.random() * 16) | 0, 1, 1);
+});
+const cowHideMat = new THREE.MeshLambertMaterial({ map: T.cowHide.tex });
+const cowMuzzleMat = new THREE.MeshLambertMaterial({ color: 0xe8a09a });
+const cowHornMat = new THREE.MeshLambertMaterial({ color: 0xd8d8d8 });
+const cowHoofMat = new THREE.MeshLambertMaterial({ color: 0x3a3a3a });
+const cowUdderMat = new THREE.MeshLambertMaterial({ color: 0xe8a0a0 });
+const cowEyeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+
+const heartTex = (() => {
+  const c = document.createElement('canvas');
+  c.width = 16; c.height = 16;
+  const g = c.getContext('2d');
+  g.fillStyle = '#ff4d6d';
+  const rows = ['01100110', '11111111', '11111111', '11111111', '01111110', '00111100', '00011000'];
+  rows.forEach((row, y) => {
+    [...row].forEach((ch, x) => { if (ch === '1') g.fillRect(x * 2, y * 2 + 1, 2, 2); });
+  });
+  const t = new THREE.CanvasTexture(c);
+  t.magFilter = THREE.NearestFilter;
+  return t;
+})();
+
+function makeCowMesh() {
+  const g = new THREE.Group();
+  const parts = {};
+  const B = (w, h, d, m, x, y, z, parent = g) => {
+    const q = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+    q.position.set(x, y, z);
+    parent.add(q);
+    return q;
+  };
+  // Тело (вперёд — +X)
+  B(1.3, 0.75, 0.7, cowHideMat, 0, 1.05, 0);
+  // Вымя
+  B(0.3, 0.2, 0.3, cowUdderMat, -0.35, 0.6, 0);
+  // Голова на шарнире (для щипания травы)
+  const headPivot = new THREE.Group();
+  headPivot.position.set(0.65, 1.25, 0);
+  g.add(headPivot);
+  B(0.45, 0.45, 0.45, cowHideMat, 0.25, 0.05, 0, headPivot);
+  B(0.12, 0.22, 0.3, cowMuzzleMat, 0.5, -0.05, 0, headPivot);
+  B(0.08, 0.08, 0.02, cowEyeMat, 0.38, 0.12, 0.23, headPivot);
+  B(0.08, 0.08, 0.02, cowEyeMat, 0.38, 0.12, -0.23, headPivot);
+  B(0.1, 0.14, 0.1, cowHornMat, 0.15, 0.33, 0.15, headPivot);
+  B(0.1, 0.14, 0.1, cowHornMat, 0.15, 0.33, -0.15, headPivot);
+  B(0.15, 0.08, 0.1, cowHideMat, 0.1, 0.15, 0.28, headPivot);
+  B(0.15, 0.08, 0.1, cowHideMat, 0.1, 0.15, -0.28, headPivot);
+  parts.headPivot = headPivot;
+  // Ноги на шарнирах (для походки)
+  parts.legs = [];
+  for (const [lx, lz] of [[0.45, 0.22], [0.45, -0.22], [-0.45, 0.22], [-0.45, -0.22]]) {
+    const pivot = new THREE.Group();
+    pivot.position.set(lx, 0.7, lz);
+    g.add(pivot);
+    B(0.24, 0.7, 0.24, cowHideMat, 0, -0.35, 0, pivot);
+    B(0.26, 0.12, 0.26, cowHoofMat, 0, -0.64, 0, pivot);
+    parts.legs.push(pivot);
+  }
+  // Хвост
+  const tailPivot = new THREE.Group();
+  tailPivot.position.set(-0.65, 1.25, 0);
+  g.add(tailPivot);
+  B(0.1, 0.6, 0.1, cowHideMat, 0, -0.3, 0, tailPivot);
+  parts.tailPivot = tailPivot;
+  g.userData.parts = parts;
+  return g;
+}
+
+// Верхняя свободная клетка над твёрдым блоком
+function groundTopY(x, z) {
+  const xi = Math.floor(x), zi = Math.floor(z);
+  for (let y = WY - 1; y >= 0; y--) {
+    if (isSolid(getBlock(xi, y, zi))) return y + 1;
+  }
+  return 1;
+}
+
+function clearCows() {
+  for (const c of cows) cowGroup.remove(c.mesh);
+  cows.length = 0;
+}
+
+function randomGrassSpot() {
+  for (let t = 0; t < 300; t++) {
+    const x = 2 + Math.random() * (WX - 4);
+    const z = 2 + Math.random() * (WZ - 4);
+    const h = Math.min(WY - 3, Math.max(2, heightAt(x | 0, z | 0)));
+    if (getBlock(x | 0, h, z | 0) === GRASS &&
+        getBlock(x | 0, h + 1, z | 0) === AIR &&
+        getBlock(x | 0, h + 2, z | 0) === AIR) {
+      return { x: x + 0.5, y: h + 1, z: z + 0.5 };
+    }
+  }
+  const cx = WX / 2, cz = WZ / 2;
+  return { x: cx, y: groundTopY(cx, cz), z: cz };
+}
+
+function addCow(x, y, z, yaw = Math.random() * Math.PI * 2) {
+  const mesh = makeCowMesh();
+  mesh.position.set(x, y, z);
+  const cow = {
+    mesh, yaw,
+    state: 'idle', timer: 1 + Math.random() * 2,
+    walkPhase: Math.random() * 6, vy: 0,
+    mooTimer: 8 + Math.random() * 20,
+    petT: 0, phase: Math.random() * 10,
+  };
+  mesh.userData.cowRef = cow;
+  cowGroup.add(mesh);
+  cows.push(cow);
+  return cow;
+}
+
+function spawnCows(n = COW_COUNT) {
+  clearCows();
+  for (let i = 0; i < n; i++) {
+    const s = randomGrassSpot();
+    addCow(s.x, s.y, s.z);
+  }
+  const el = document.getElementById('cows');
+  if (el) el.textContent = `🐄 ${cows.length}`;
+}
+
+function updateCows(dt) {
+  const now = performance.now() / 1000;
+  const px = player.pos.x, pz = player.pos.z;
+  for (const c of cows) {
+    const p = c.mesh.position;
+    c.timer -= dt;
+    c.mooTimer -= dt;
+    if (c.petT > 0) c.petT -= dt;
+
+    const dx = p.x - px, dz = p.z - pz;
+    const distP = Math.hypot(dx, dz);
+
+    // Испуг: игрок слишком близко — убегаем
+    if (distP < 2.5 && c.state !== 'flee') {
+      c.state = 'flee';
+      c.timer = 1.2;
+      c.yaw = Math.atan2(dz, dx);
+      moo(0.35, 200);
+    }
+    if (c.timer <= 0) {
+      const r = Math.random();
+      if (c.state === 'flee') { c.state = 'walk'; c.timer = 1 + Math.random() * 2; }
+      else if (r < 0.4) { c.state = 'idle'; c.timer = 1 + Math.random() * 2; }
+      else if (r < 0.7) { c.state = 'graze'; c.timer = 2 + Math.random() * 2.5; }
+      else { c.state = 'walk'; c.timer = 2 + Math.random() * 3; c.yaw += (Math.random() - 0.5) * 2; }
+    }
+
+    const speed = c.state === 'walk' ? 1.3 : c.state === 'flee' ? 3.2 : 0;
+    if (speed > 0) {
+      if (c.state === 'walk') c.yaw += (Math.random() - 0.5) * 1.5 * dt;
+      const nx = p.x + Math.cos(c.yaw) * speed * dt;
+      const nz = p.z + Math.sin(c.yaw) * speed * dt;
+      if (nx < 2 || nx > WX - 2 || nz < 2 || nz > WZ - 2) {
+        c.yaw += Math.PI / 2;
+      } else {
+        const feetY = Math.floor(p.y);
+        const aheadHigh = isSolid(getBlock(Math.floor(nx), feetY + 1, Math.floor(nz))) &&
+                          isSolid(getBlock(Math.floor(nx), feetY + 2, Math.floor(nz)));
+        const gyAhead = groundTopY(nx, nz);
+        if (aheadHigh) c.yaw += (Math.random() < 0.5 ? 1 : -1) * 1.2;
+        else if (p.y - gyAhead > 3.5) c.yaw += 1.4; // не падаем с обрывов
+        else { p.x = nx; p.z = nz; c.walkPhase += dt * speed * 3; }
+      }
+    }
+
+    // Вертикаль: прыжки + следование рельефу
+    const gy = groundTopY(p.x, p.z);
+    if (c.vy !== 0 || p.y > gy + 0.02) {
+      c.vy -= 20 * dt;
+      p.y += c.vy * dt;
+      if (p.y <= gy) { p.y = gy; c.vy = 0; }
+    } else if (p.y < gy) {
+      p.y = Math.min(gy, p.y + 3 * dt); // подъём на ступеньку
+    }
+
+    c.mesh.rotation.y = -c.yaw;
+
+    // Анимация ног (диагональные пары)
+    const parts = c.mesh.userData.parts;
+    const sw = speed > 0 ? Math.sin(c.walkPhase) * 0.6 : 0;
+    parts.legs[0].rotation.z = sw;
+    parts.legs[3].rotation.z = sw;
+    parts.legs[1].rotation.z = -sw;
+    parts.legs[2].rotation.z = -sw;
+
+    // Голова: пасёмся — вниз, иначе лёгкое покачивание
+    const headTarget = c.state === 'graze' ? -0.9 : Math.sin(now * 1.3 + c.phase) * 0.08;
+    parts.headPivot.rotation.z += (headTarget - parts.headPivot.rotation.z) * Math.min(1, 4 * dt);
+
+    // Хвост виляет
+    parts.tailPivot.rotation.x = Math.sin(now * 2.2 + c.phase) * 0.35;
+
+    // Погладили — пружинистый скейл
+    const s = c.petT > 0 ? 1 + Math.sin(c.petT * 12) * 0.06 * c.petT : 1;
+    c.mesh.scale.set(s, s, s);
+
+    // Случайное мычание рядом с игроком
+    if (c.mooTimer <= 0) {
+      c.mooTimer = 12 + Math.random() * 18;
+      if (distP < 28) moo(Math.max(0.08, 0.35 - distP * 0.01), 150 + Math.random() * 30);
+    }
+  }
+  // Разделяем коров, чтобы не слипались
+  for (let i = 0; i < cows.length; i++) {
+    for (let j = i + 1; j < cows.length; j++) {
+      const a = cows[i].mesh.position, b = cows[j].mesh.position;
+      const dx = b.x - a.x, dz = b.z - a.z;
+      const d = Math.hypot(dx, dz);
+      if (d < 1 && d > 0.001) {
+        const push = (1 - d) * 0.5 * dt * 3;
+        const ux = dx / d, uz = dz / d;
+        a.x -= ux * push; a.z -= uz * push;
+        b.x += ux * push; b.z += uz * push;
+      }
+    }
+  }
+}
+
+// ============ Звук: синтезированное «му-у» (WebAudio, без файлов) ============
+let audioCtx = null, lastPetToast = 0;
+function ensureAudio() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  } catch { /* без звука */ }
+}
+function moo(vol = 0.4, f0 = 165) {
+  if (!audioCtx) return;
+  try {
+    const t0 = audioCtx.currentTime;
+    const dur = 0.7;
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.001, vol), t0 + 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    const filt = audioCtx.createBiquadFilter();
+    filt.type = 'lowpass'; filt.frequency.value = 600; filt.Q.value = 2;
+    const o1 = audioCtx.createOscillator();
+    o1.type = 'sawtooth';
+    o1.frequency.setValueAtTime(f0, t0);
+    o1.frequency.linearRampToValueAtTime(f0 * 0.58, t0 + dur);
+    const o2 = audioCtx.createOscillator();
+    o2.type = 'triangle';
+    o2.frequency.setValueAtTime(f0 * 0.5, t0);
+    o2.frequency.linearRampToValueAtTime(f0 * 0.36, t0 + dur);
+    const lfo = audioCtx.createOscillator();
+    lfo.frequency.value = 7;
+    const lfoG = audioCtx.createGain();
+    lfoG.gain.value = f0 * 0.05;
+    lfo.connect(lfoG); lfoG.connect(o1.frequency);
+    o1.connect(filt); o2.connect(filt);
+    filt.connect(gain); gain.connect(audioCtx.destination);
+    for (const o of [o1, o2, lfo]) { o.start(t0); o.stop(t0 + dur + 0.05); }
+  } catch { /* без звука */ }
+}
+
+function spawnHearts(pos) {
+  for (let i = 0; i < 4; i++) {
+    const m = new THREE.SpriteMaterial({ map: heartTex, transparent: true, depthWrite: false });
+    const s = new THREE.Sprite(m);
+    s.position.set(pos.x + (Math.random() - 0.5) * 0.8, pos.y + 1.6 + Math.random() * 0.4, pos.z + (Math.random() - 0.5) * 0.8);
+    s.scale.set(0.35, 0.35, 1);
+    scene.add(s);
+    hearts.push({ s, life: 1 });
+  }
+}
+function updateHearts(dt) {
+  for (let i = hearts.length - 1; i >= 0; i--) {
+    const h = hearts[i];
+    h.life -= dt;
+    h.s.position.y += dt * 1.2;
+    h.s.material.opacity = Math.max(0, h.life);
+    if (h.life <= 0) {
+      scene.remove(h.s);
+      h.s.material.dispose();
+      hearts.splice(i, 1);
+    }
+  }
+}
+
+function petCow(c) {
+  ensureAudio();
+  moo(0.5);
+  c.vy = 5; // подпрыгивание от радости
+  c.petT = 0.6;
+  if (c.state === 'graze' || c.state === 'idle') { c.state = 'idle'; c.timer = 2; }
+  spawnHearts(c.mesh.position);
+  const now = performance.now();
+  if (now - lastPetToast > 2500) {
+    lastPetToast = now;
+    toast('🐄 Му-у!');
+  }
+}
+
 // Меши мира (InstancedMesh по типам)
 const worldGroup = new THREE.Group();
 scene.add(worldGroup);
@@ -404,11 +715,13 @@ document.addEventListener('mousemove', e => {
 });
 document.addEventListener('contextmenu', e => e.preventDefault());
 
-let currentTarget = null;
+let currentTarget = null, aimedCow = null, aimedCowDist = Infinity;
+const raycaster = new THREE.Raycaster();
 canvas.addEventListener('mousedown', e => {
   if (!menu.classList.contains('hidden')) return;
   if (!locked) { canvas.requestPointerLock?.(); return; }
-  if (e.button === 0) breakBlock();
+  ensureAudio();
+  if (e.button === 0) { if (aimedCow) petCow(aimedCow); else breakBlock(); }
   if (e.button === 2) placeBlock();
 });
 addEventListener('wheel', e => {
@@ -522,7 +835,7 @@ if (isTouch) {
     if (player.fly) player.vel.y = 5; else if (player.onGround) player.vel.y = 9;
     keys['Space'] = true; setTimeout(() => keys['Space'] = false, 150);
   };
-  ui.querySelector('#t-break').onclick = () => breakBlock();
+  ui.querySelector('#t-break').onclick = () => { if (aimedCow) petCow(aimedCow); else breakBlock(); };
   ui.querySelector('#t-place').onclick = () => placeBlock();
 }
 
@@ -538,13 +851,20 @@ function toast(msg) {
 function updateBadge() {
   document.getElementById('mode-badge').textContent = player.fly ? '🕊️ Полёт' : '🚶 Ходьба';
 }
+let savedCows = null;
 function saveGame() {
   try {
     let bin = '';
     const chunk = 8192;
     for (let i = 0; i < data.length; i += chunk)
       bin += String.fromCharCode(...data.subarray(i, i + chunk));
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ seed, data: btoa(bin) }));
+    const cowData = cows.map(c => ({
+      x: +c.mesh.position.x.toFixed(2),
+      y: +c.mesh.position.y.toFixed(2),
+      z: +c.mesh.position.z.toFixed(2),
+      yaw: +c.yaw.toFixed(2),
+    }));
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ seed, data: btoa(bin), cows: cowData }));
     toast('💾 Мир сохранён');
   } catch { toast('⚠️ Не удалось сохранить'); }
 }
@@ -552,16 +872,29 @@ function loadGame() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return false;
-    const { seed: s, data: b64 } = JSON.parse(raw);
+    const { seed: s, data: b64, cows: sc } = JSON.parse(raw);
     const bin = atob(b64);
     if (bin.length !== WX * WY * WZ) return false;
     seed = s;
     data = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) data[i] = bin.charCodeAt(i);
+    savedCows = Array.isArray(sc) ? sc : null;
     return true;
   } catch { return false; }
 }
+function restoreCows() {
+  if (!savedCows || !savedCows.length) return;
+  clearCows();
+  for (const sc of savedCows.slice(0, COW_COUNT)) {
+    const y = Math.min(WY - 1, Math.max(1, sc.y));
+    addCow(sc.x, y, sc.z, sc.yaw || 0);
+  }
+  savedCows = null;
+  const el = document.getElementById('cows');
+  if (el) el.textContent = `🐄 ${cows.length}`;
+}
 document.getElementById('play-btn').onclick = () => {
+  ensureAudio();
   menu.classList.add('hidden');
   if (!isTouch) canvas.requestPointerLock?.();
 };
@@ -571,7 +904,7 @@ document.getElementById('new-world-btn').onclick = () => {
   localStorage.removeItem(SAVE_KEY);
   document.getElementById('loading').classList.add('show');
   setTimeout(() => {
-    generateWorld(); rebuildWorld(); spawnPlayer();
+    generateWorld(); rebuildWorld(); spawnPlayer(); spawnCows();
     document.getElementById('loading').classList.remove('show');
     menu.classList.add('hidden');
     if (!isTouch) canvas.requestPointerLock?.();
@@ -594,6 +927,8 @@ function animate(now) {
   last = now;
 
   if (menu.classList.contains('hidden')) stepPlayer(dt);
+  updateCows(dt);
+  updateHearts(dt);
   for (const c of clouds) { c.position.x += dt * 0.6; if (c.position.x > WX + 8) c.position.x = -8; }
 
   camera.position.set(player.pos.x, player.pos.y + player.eye, player.pos.z);
@@ -602,8 +937,30 @@ function animate(now) {
   camera.rotation.y = player.yaw;
   camera.rotation.x = player.pitch;
 
-  currentTarget = raycastVoxel(eyePos(), cameraDir(), 7);
+  const eye = eyePos(), dir = cameraDir();
+  currentTarget = raycastVoxel(eye, dir, 7);
+
+  // Прицел на корову (приоритет — кто ближе)
+  aimedCow = null; aimedCowDist = Infinity;
+  raycaster.set(eye, dir);
+  raycaster.far = 7;
+  const cowHits = raycaster.intersectObjects(cowGroup.children, true);
+  if (cowHits.length) {
+    let o = cowHits[0].object, root = null;
+    while (o) { if (o.userData.cowRef) { root = o.userData.cowRef; break; } o = o.parent; }
+    if (root) { aimedCow = root; aimedCowDist = cowHits[0].distance; }
+  }
+
+  let blockDist = Infinity;
   if (currentTarget) {
+    blockDist = eye.distanceTo(new THREE.Vector3(
+      currentTarget.x + 0.5, currentTarget.y + 0.5, currentTarget.z + 0.5));
+  }
+  if (aimedCow && aimedCowDist <= blockDist) {
+    highlight.visible = false;
+    infoEl.style.display = 'block';
+    infoEl.textContent = '🐄 Корова — ЛКМ: погладить';
+  } else if (currentTarget) {
     highlight.visible = true;
     highlight.position.set(currentTarget.x + 0.5, currentTarget.y + 0.5, currentTarget.z + 0.5);
     infoEl.style.display = 'block';
@@ -637,4 +994,7 @@ updateBadge();
 if (!loadGame()) generateWorld();
 rebuildWorld();
 spawnPlayer();
+spawnCows();
+restoreCows();
+window.__game = { cows, player, petCow, moo, spawnCows, getBlock, groundTopY };
 requestAnimationFrame(animate);
