@@ -1,0 +1,13 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - heading "🚀 TURBO LEAGUE" [level=1] [ref=e3]
+    - generic [ref=e4]:
+      - generic [ref=e5]: "0"
+      - generic [ref=e6]: 2:00
+      - generic [ref=e7]: "0"
+  - main [ref=e8]:
+    - generic [ref=e17]:
+      - generic [ref=e18]: 🟠 You — drive with WASD/Arrows, boost with Shift. Grab yellow boost pads to refill.
+      - generic [ref=e21]: "🤖 Mode: vs CPU. Press “2 Players” for local multiplayer: P2 uses WASD + F boost, P1 uses Arrows + Shift."
+      - generic [ref=e22]: ⚽ Hit the ball into the glowing goal. After a goal there’s a 3-2-1 kickoff. R restarts the match.
+  - contentinfo [ref=e23]: Single-file build · no dependencies · canvas 60fps · sound via WebAudio · 18 fps

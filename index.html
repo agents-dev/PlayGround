@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Turbo League — Browser Car Soccer</title>
+<style>
+  :root { --bg:#0b1020; --panel:#141b33; --accent:#ff9f1c; --blue:#2ec4ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:radial-gradient(1200px 600px at 50% -10%, #1c2650, var(--bg)); color:#eef2ff; min-height:100vh; display:flex; flex-direction:column; align-items:center; }
+  header { width:min(1000px,96vw); display:flex; align-items:center; justify-content:space-between; padding:14px 4px 8px; }
+  header h1 { margin:0; font-size:20px; letter-spacing:.5px; }
+  header h1 span { color:var(--accent); }
+  .scoreboard { display:flex; gap:10px; align-items:center; background:var(--panel); border:1px solid #2a3563; border-radius:12px; padding:8px 14px; font-variant-numeric:tabular-nums; }
+  .score { font-size:22px; font-weight:800; }
+  .blue { color:var(--blue); } .orange { color:var(--accent); }
+  #timer { background:#0b1020; border-radius:8px; padding:4px 10px; font-weight:700; }
+  main { width:min(1000px,96vw); }
+  #wrap { position:relative; border-radius:16px; overflow:hidden; border:1px solid #2a3563; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+  canvas { display:block; width:100%; height:auto; background:#d9a00a; touch-action:none; }
+  #overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px; background:rgba(5,8,20,.72); text-align:center; padding:20px; }
+  #overlay.hidden { display:none; }
+  #overlay h2 { margin:0; font-size:clamp(28px,5vw,52px); }
+  #overlay p { margin:0; opacity:.85; max-width:520px; line-height:1.5; }
+  button { cursor:pointer; border:0; border-radius:10px; padding:12px 20px; font-weight:800; font-size:15px; background:var(--accent); color:#1a1000; }
+  button.ghost { background:transparent; color:#fff; border:1px solid #445; }
+  .hud { display:flex; gap:10px; flex-wrap:wrap; margin:10px 0; }
+  .card { flex:1; min-width:200px; background:var(--panel); border:1px solid #2a3563; border-radius:12px; padding:10px 12px; font-size:13px; line-height:1.5; }
+  .boostbar { height:10px; background:#0b1020; border-radius:99px; overflow:hidden; margin-top:6px; border:1px solid #2a3563; }
+  .boostbar > div { height:100%; width:100%; background:linear-gradient(90deg,#ffb703,#fb8500); transition:width .1s; }
+  #touch { display:none; gap:10px; margin:10px 0; }
+  #touch button { flex:1; padding:16px; font-size:16px; user-select:none; -webkit-user-select:none; }
+  @media (pointer:coarse) { #touch { display:flex; } }
+  footer { opacity:.6; font-size:12px; padding:14px; text-align:center; }
+  kbd { background:#0b1020; border:1px solid #334; border-bottom-width:3px; border-radius:6px; padding:1px 6px; font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🚀 TURBO <span>LEAGUE</span></h1>
+  <div class="scoreboard" aria-live="polite">
+    <span class="score blue" id="scoreBlue">0</span>
+    <span id="timer">2:00</span>
+    <span class="score orange" id="scoreOrange">0</span>
+  </div>
+</header>
+<main>
+  <div id="wrap">
+    <canvas id="game" width="960" height="540"></canvas>
+    <div id="overlay">
+      <h2 id="ovTitle">TURBO LEAGUE</h2>
+      <p id="ovText">Car soccer: you are <b style="color:#ff9f1c">ORANGE</b> (right). First to the most goals in 2:00 wins.<br><br><kbd>W A S D</kbd> / <kbd>←↑↓→</kbd> drive &nbsp; <kbd>Shift</kbd> / <kbd>Space</kbd> boost &nbsp; <kbd>R</kbd> restart &nbsp; <kbd>P</kbd> pause</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+        <button id="playBtn">▶ Kick Off</button>
+        <button id="howBtn" class="ghost">2 Players (local)</button>
+      </div>
+    </div>
+  </div>
+  <div class="hud">
+    <div class="card">🟠 <b>You</b> — drive with <kbd>WASD</kbd>/<kbd>Arrows</kbd>, boost with <kbd>Shift</kbd>. Grab yellow boost pads to refill.
+      <div class="boostbar"><div id="boostFill"></div></div>
+    </div>
+    <div class="card" id="modeCard">🤖 <b>Mode:</b> vs CPU. Press “2 Players” for local multiplayer: P2 uses <kbd>WASD</kbd> + <kbd>F</kbd> boost, P1 uses <kbd>Arrows</kbd> + <kbd>Shift</kbd>.</div>
+    <div class="card">⚽ Hit the ball into the glowing goal. After a goal there’s a 3-2-1 kickoff. <kbd>R</kbd> restarts the match.</div>
+  </div>
+  <div id="touch">
+    <button id="tLeft">◀</button>
+    <button id="tUp">▲</button>
+    <button id="tDown">▼</button>
+    <button id="tRight">▶</button>
+    <button id="tBoost">BOOST</button>
+  </div>
+</main>
+<footer>Single-file build · no dependencies · canvas 60fps · sound via WebAudio · <span id="fps"></span></footer>
+<script>
+(function(){
+"use strict";
+var W=960,H=540;
+var cvs=document.getElementById('game'),ctx=cvs.getContext('2d');
+var ov=document.getElementById('overlay'),ovTitle=document.getElementById('ovTitle'),ovText=document.getElementById('ovText');
+var playBtn=document.getElementById('playBtn'),howBtn=document.getElementById('howBtn');
+var elB=document.getElementById('scoreBlue'),elO=document.getElementById('scoreOrange'),elT=document.getElementById('timer'),boostFill=document.getElementById('boostFill'),fpsEl=document.getElementById('fps'),modeCard=document.getElementById('modeCard');
+
+var MATCH_LEN=120, state='menu', twoPlayer=false, paused=false;
+var scoreB=0,scoreO=0,timeLeft=MATCH_LEN,countdown=0,countdownT=0,shake=0,slowmo=0;
+var keys={};
+var pads=[],particles=[];
+
+function beep(f,d,type,g){ try{ var AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; beep.ctx=beep.ctx||new AC(); var a=beep.ctx,o=a.createOscillator(),gn=a.createGain(); o.type=type||'square'; o.frequency.value=f; gn.gain.value=g||0.06; o.connect(gn); gn.connect(a.destination); o.start(); o.stop(a.currentTime+d); }catch(e){} }
+function whistle(){ beep(880,.25,'sine',.08); setTimeout(function(){beep(880,.4,'sine',.08);},280); }
+function goalSound(){ beep(523,.12,'square'); setTimeout(function(){beep(659,.12,'square');},120); setTimeout(function(){beep(784,.3,'square');},240); }
+
+function mkCar(x,y,angle,color){ return {x:x,y:y,a:angle,vx:0,vy:0,color:color,boost:100,w:34,h:18}; }
+var p1=mkCar(W-220,H/2,Math.PI,'#ff9f1c');
+var p2=mkCar(220,H/2,0,'#2ec4ff');
+var ball={x:W/2,y:H/2,vx:0,vy:0,r:14};
+
+function resetPositions(){
+  p1.x=W-220;p1.y=H/2;p1.a=Math.PI;p1.vx=p1.vy=0;p1.boost=Math.max(p1.boost,60);
+  p2.x=220;p2.y=H/2;p2.a=0;p2.vx=p2.vy=0;p2.boost=Math.max(p2.boost,60);
+  ball.x=W/2;ball.y=H/2;ball.vx=(Math.random()<.5?-1:1)*120;ball.vy=(Math.random()-.5)*120;
+  particles.length=0;
+}
+function newMatch(){ scoreB=0;scoreO=0;timeLeft=MATCH_LEN; p1.boost=100;p2.boost=100; resetPositions(); startCountdown(); updateScore(); }
+function startCountdown(){ countdown=3; countdownT=0; }
+function burst(x,y,color,n,spd){ for(var i=0;i<(n||24);i++){ var a=Math.random()*Math.PI*2,s=(spd||260)*(0.3+Math.random()); particles.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:0.6+Math.random()*0.5,t:0,color:color,r:2+Math.random()*3}); } }
+
+pads=[];
+[[W/2,80],[W/2,H-80],[W/2-260,H/2],[W/2+260,H/2],[140,120],[W-140,120],[140,H-120],[W-140,H-120]].forEach(function(p){ pads.push({x:p[0],y:p[1],cd:0}); });
+
+function goal(scorer){
+  if(scorer==='O'){scoreO++;}else{scoreB++;}
+  updateScore(); goalSound(); shake=14; slowmo=0.45;
+  burst(ball.x,ball.y,scorer==='O'?'#ff9f1c':'#2ec4ff',80,420);
+  resetPositions(); startCountdown();
+  if(scoreO+scoreB>=9){ /* keep playing, no mercy rule needed */ }
+}
+function updateScore(){ elB.textContent=scoreB; elO.textContent=scoreO; }
+function fmt(t){ t=Math.max(0,Math.ceil(t)); return Math.floor(t/60)+':'+String(t%60).padStart(2,'0'); }
+
+function endMatch(){
+  state='over'; whistle();
+  var t = scoreO===scoreB?'DRAW!':(scoreO>scoreB?'ORANGE WINS! 🏆':'BLUE WINS! 🏆');
+  if(twoPlayer) t = scoreO===scoreB?'DRAW!':(scoreO>scoreB?'P1 (ORANGE) WINS! 🏆':'P2 (BLUE) WINS! 🏆');
+  ovTitle.textContent=t;
+  ovText.innerHTML='Final score — <b style="color:#2ec4ff">BLUE '+scoreB+'</b> : <b style="color:#ff9f1c">'+scoreO+' ORANGE</b><br>Press Kick Off or <kbd>R</kbd> for a rematch.';
+  playBtn.textContent='↻ Rematch';
+  ov.classList.remove('hidden');
+}
+
+function drive(car,up,down,left,right,boostKey,dt){
+  var ACC=620,TURN=3.4,MAX=380,BOOST_ACC=950,BOOST_MAX=640;
+  var boosting=false;
+  if(left) car.a-=TURN*dt*(up||down?1:0.6);
+  if(right) car.a+=TURN*dt*(up||down?1:0.6);
+  var max=MAX;
+  if(boostKey&&car.boost>0&&(up||down)){ boosting=true; car.boost=Math.max(0,car.boost-38*dt); max=BOOST_MAX; }
+  var fwd=0;
+  if(up) fwd+= (boosting?BOOST_ACC:ACC);
+  if(down) fwd-=ACC*0.65;
+  car.vx+=Math.cos(car.a)*fwd*dt; car.vy+=Math.sin(car.a)*fwd*dt;
+  // drag + speed cap
+  car.vx*= (1-0.9*dt); car.vy*=(1-0.9*dt);
+  var sp=Math.hypot(car.vx,car.vy);
+  if(sp>max){ car.vx*=max/sp; car.vy*=max/sp; }
+  car.x+=car.vx*dt; car.y+=car.vy*dt;
+  if(boosting){ particles.push({x:car.x-Math.cos(car.a)*18,y:car.y-Math.sin(car.a)*18,vx:-Math.cos(car.a)*160+(Math.random()-.5)*60,vy:-Math.sin(car.a)*160+(Math.random()-.5)*60,life:.35,t:0,color:'#ffd166',r:2+Math.random()*2}); }
+  // walls (leave goal mouths open)
+  var m=26, goalHalf=78;
+  var inMouth=Math.abs(car.y-H/2)<goalHalf-14;
+  if(car.x<m&&!inMouth){car.x=m;car.vx=Math.abs(car.vx)*0.4;}
+  if(car.x>W-m&&!inMouth){car.x=W-m;car.vx=-Math.abs(car.vx)*0.4;}
+  if(car.y<m){car.y=m;car.vy=Math.abs(car.vy)*0.4;}
+  if(car.y>H-m){car.y=H-m;car.vy=-Math.abs(car.vy)*0.4;}
+  // clamp inside goals so cars can chase in
+  car.x=Math.max(2,Math.min(W-2,car.x)); car.y=Math.max(m-8,Math.min(H-m+8,car.y));
+}
+
+function collideCarBall(car,dt){
+  var dx=ball.x-car.x,dy=ball.y-car.y,d=Math.hypot(dx,dy),min=ball.r+15;
+  if(d<min&&d>0.01){
+    var nx=dx/d,ny=dy/d;
+    ball.x=car.x+nx*min; ball.y=car.y+ny*min;
+    var cvx=car.vx, cvy=car.vy;
+    var rel=(ball.vx-cvx)*nx+(ball.vy-cvy)*ny;
+    if(rel<0){
+      var imp=-(1.85)*rel;
+      ball.vx+=nx*imp; ball.vy+=ny*imp;
+      // add a bit of car forward flick
+      ball.vx+=Math.cos(car.a)*40*dt*60*0.016; ball.vy+=Math.sin(car.a)*40*dt*60*0.016;
+      var s=Math.hypot(ball.vx,ball.vy),cap=720;
+      if(s>cap){ball.vx*=cap/s;ball.vy*=cap/s;}
+      burst(ball.x,ball.y,'#ffffff',6,140);
+      if(Math.abs(rel)>220) beep(160+Math.min(400,Math.abs(rel)*0.4),.07,'triangle',.05);
+    }
+    // gentle push apart
+    car.vx-=nx*imp*0.08||0; car.vy-=ny*imp*0.08||0;
+  }
+}
+
+function ai(dt){
+  // chase ball, defend own goal (left), attack right goal
+  var tx=ball.x, ty=ball.y;
+  // if ball is on our half and moving toward our goal, go to ball; else aim behind ball
+  var defendX=90;
+  if(ball.x< W*0.35 && ball.vx<-60){ tx=(ball.x+defendX)/2; ty=(ball.y+H/2)/2; }
+  else { // approach point slightly behind ball relative to target goal
+    tx=ball.x-26; ty=ball.y;
+    if(Math.abs(ball.y-H/2)>120) ty=ball.y;
+  }
+  var want=Math.atan2(ty-p2.y,tx-p2.x);
+  var diff=((want-p2.a+Math.PI*3)%(Math.PI*2))-Math.PI;
+  var left=diff<-0.08, right=diff>0.08;
+  var up=Math.abs(diff)<1.2;
+  var down=Math.abs(diff)>2.4;
+  var boostKey=Math.abs(diff)<0.25 && p2.boost>25 && Math.hypot(ball.x-p2.x,ball.y-p2.y)>180;
+  // grab nearby pad if low
+  if(p2.boost<35){ var best=null,bd=1e9; pads.forEach(function(p){ if(p.cd<=0){ var d=Math.hypot(p.x-p2.x,p.y-p2.y); if(d<bd){bd=d;best=p;} } }); if(best&&bd<260){ var wa=Math.atan2(best.y-p2.y,best.x-p2.x); var d2=((wa-p2.a+Math.PI*3)%(Math.PI*2))-Math.PI; left=d2<-0.08;right=d2>0.08;up=Math.abs(d2)<1.2; boostKey=false; } }
+  drive(p2,up,down,left,right,boostKey,dt);
+}
+
+function step(dt){
+  // pads
+  pads.forEach(function(p){ if(p.cd>0)p.cd-=dt; });
+  [p1,p2].forEach(function(car){
+    pads.forEach(function(p){ if(p.cd<=0&&Math.hypot(p.x-car.x,p.y-car.y)<26){ car.boost=Math.min(100,car.boost+40); p.cd=6; burst(p.x,p.y,'#ffe66d',12,160); beep(1200,.06,'sine',.04);} });
+  });
+
+  var k=keys;
+  if(!twoPlayer){
+    drive(p1,k['arrowup']||k['w'],k['arrowdown']||k['s'],k['arrowleft']||k['a'],k['arrowright']||k['d'],k['shift']||k[' ']||touch.boost,dt);
+    ai(dt);
+  } else {
+    drive(p1,k['arrowup'],k['arrowdown'],k['arrowleft'],k['arrowright'],k['shift']||k['/'],dt); // P1 orange right side
+    drive(p2,k['w'],k['s'],k['a'],k['d'],k['f'],dt); // P2 blue left side
+  }
+
+  collideCarBall(p1,dt); collideCarBall(p2,dt);
+
+  // ball physics
+  ball.vx*=(1-0.35*dt); ball.vy*=(1-0.35*dt);
+  ball.x+=ball.vx*dt; ball.y+=ball.vy*dt;
+  var m=26, goalHalf=78;
+  var inMouthY=Math.abs(ball.y-H/2)<goalHalf;
+  if(ball.y<m+ball.r){ball.y=m+ball.r;ball.vy=Math.abs(ball.vy)*0.85;beep(200,.04,'triangle',.03);}
+  if(ball.y>H-m-ball.r){ball.y=H-m-ball.r;ball.vy=-Math.abs(ball.vy)*0.85;beep(200,.04,'triangle',.03);}
+  if(inMouthY){
+    // let it travel into goal boxes
+    if(ball.x<-8){ goal('O'); return; }
+    if(ball.x>W+8){ goal('B'); return; }
+    // goal posts bounce
+    if((ball.x<m+ball.r&&ball.x>0)&&!inMouthY){}
+  } else {
+    if(ball.x<m+ball.r){ball.x=m+ball.r;ball.vx=Math.abs(ball.vx)*0.85;beep(200,.04,'triangle',.03);}
+    if(ball.x>W-m-ball.r){ball.x=W-m-ball.r;ball.vx=-Math.abs(ball.vx)*0.85;beep(200,.04,'triangle',.03);}
+  }
+  // posts
+  [[m,H/2-goalHalf],[m,H/2+goalHalf],[W-m,H/2-goalHalf],[W-m,H/2+goalHalf]].forEach(function(pt){
+    var dx=ball.x-pt[0],dy=ball.y-pt[1],d=Math.hypot(dx,dy);
+    if(d<ball.r+5&&d>0.01){ ball.x=pt[0]+dx/d*(ball.r+5); ball.y=pt[1]+dy/d*(ball.r+5); var dot=ball.vx*dx/d+ball.vy*dy/d; if(dot<0){ ball.vx-=1.8*dot*dx/d; ball.vy-=1.8*dot*dy/d; beep(320,.05,'triangle',.04);} }
+  });
+
+  // particles
+  for(var i=particles.length-1;i>=0;i--){ var p=particles[i]; p.t+=dt; if(p.t>p.life){particles.splice(i,1);continue;} p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=(1-2*dt); p.vy*=(1-2*dt); }
+
+  if(shake>0)shake-=dt*30;
+  timeLeft-=dt;
+  elT.textContent=fmt(timeLeft);
+  if(timeLeft<=0){ timeLeft=0; endMatch(); }
+}
+
+function drawCar(car){
+  ctx.save(); ctx.translate(car.x,car.y); ctx.rotate(car.a);
+  ctx.fillStyle='rgba(0,0,0,.3)'; ctx.fillRect(-14+3,-8+4,30,18);
+  ctx.fillStyle=car.color; roundRect(-15,-9,30,18,5); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.85)'; roundRect(2,-6,9,12,2); ctx.fill(); // cabin
+  ctx.fillStyle='#0b1020'; [[-11,-11],[3,-11],[-11,7],[3,7]].forEach(function(w){ roundRect(w[0],w[1],12,4,2); ctx.fill(); });
+  ctx.restore();
+}
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+function draw(){
+  ctx.save();
+  if(shake>0) ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
+  // pitch
+  var g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#ffd23f'); g.addColorStop(1,'#d9a00a');
+  ctx.fillStyle=g; ctx.fillRect(-20,-20,W+40,H+40);
+  ctx.strokeStyle='rgba(255,255,255,.75)'; ctx.lineWidth=3;
+  ctx.strokeRect(26,26,W-52,H-52);
+  ctx.beginPath(); ctx.moveTo(W/2,26); ctx.lineTo(W/2,H-26); ctx.stroke();
+  ctx.beginPath(); ctx.arc(W/2,H/2,60,0,Math.PI*2); ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,.9)'; ctx.beginPath(); ctx.arc(W/2,H/2,5,0,Math.PI*2); ctx.fill();
+  // boxes
+  ctx.strokeRect(26,H/2-110,110,220); ctx.strokeRect(W-26-110,H/2-110,110,220);
+  // goals
+  var goalHalf=78;
+  ctx.fillStyle='rgba(46,196,255,.25)'; ctx.fillRect(-6,H/2-goalHalf,32,goalHalf*2);
+  ctx.fillStyle='rgba(255,159,28,.25)'; ctx.fillRect(W-26,H/2-goalHalf,32,goalHalf*2);
+  ctx.fillStyle='#2ec4ff'; ctx.fillRect(22,H/2-goalHalf,5,goalHalf*2);
+  ctx.fillStyle='#ff9f1c'; ctx.fillRect(W-27,H/2-goalHalf,5,goalHalf*2);
+  // pads
+  pads.forEach(function(p){ if(p.cd>0){ ctx.fillStyle='rgba(255,255,255,.15)'; } else { ctx.fillStyle='#ffe66d'; ctx.shadowColor='#ffe66d'; ctx.shadowBlur=12; } ctx.beginPath(); ctx.arc(p.x,p.y,p.cd>0?6:8,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; if(p.cd<=0){ ctx.fillStyle='#7a5c00'; ctx.beginPath(); ctx.arc(p.x,p.y,3.5,0,Math.PI*2); ctx.fill(); } });
+  // particles under cars
+  particles.forEach(function(p){ ctx.globalAlpha=1-p.t/p.life; ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1; });
+  // ball shadow + ball
+  ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(ball.x+3,ball.y+5,ball.r,ball.r*0.5,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#0b1020'; ctx.beginPath(); ctx.arc(ball.x-4,ball.y-3,3,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(ball.x+5,ball.y+4,3.4,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(ball.x+2,ball.y-6,2.4,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2); ctx.stroke();
+  drawCar(p2); drawCar(p1);
+  ctx.restore();
+
+  // countdown
+  if(state==='play'&&countdown>0){
+    ctx.fillStyle='rgba(5,8,20,.45)'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#fff'; ctx.font='900 90px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(String(countdown),W/2,H/2-10);
+    ctx.font='700 22px system-ui'; ctx.fillText('KICKOFF',W/2,H/2+55);
+  }
+  if(paused&&state==='play'){ ctx.fillStyle='rgba(5,8,20,.55)'; ctx.fillRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.font='900 44px system-ui'; ctx.textAlign='center'; ctx.fillText('PAUSED — P to resume',W/2,H/2); }
+  boostFill.style.width=Math.round(p1.boost)+'%';
+}
+
+var last=performance.now(),fpsA=0,fpsN=0,fpsT=0;
+function loop(now){
+  requestAnimationFrame(loop);
+  var raw=(now-last)/1000; last=now;
+  if(raw>0.1)raw=0.1;
+  fpsA+=raw;fpsN++;fpsT+=raw; if(fpsT>0.5){ fpsEl.textContent=Math.round(fpsN/fpsA)+' fps'; fpsA=0;fpsN=0;fpsT=0; }
+  if(state!=='play'||paused){ draw(); return; }
+  var dt=raw;
+  if(slowmo>0){ slowmo-=raw; dt*=0.35; if(slowmo<=0)slowmo=0; }
+  if(countdown>0){
+    countdownT+=raw;
+    var n=3-Math.floor(countdownT);
+    if(n!==countdown&&n>=0){ countdown=n; if(n>0)beep(440,.12,'square',.06); else {beep(880,.3,'square',.07); whistle;} }
+    if(countdownT>=3){countdown=0;}
+    // still let cars rev but not move ball much: damp
+    draw(); return;
+  }
+  // fixed-ish substeps for stable collisions
+  var steps=2,h=dt/steps;
+  for(var i=0;i<steps;i++){ step(h); if(state!=='play')break; }
+  draw();
+}
+
+var touch={boost:false};
+function bindHold(id,down,up){ var el=document.getElementById(id); var on=function(e){e.preventDefault();down();},off=function(e){e.preventDefault();up();}; el.addEventListener('pointerdown',on); el.addEventListener('pointerup',off); el.addEventListener('pointerleave',off); el.addEventListener('pointercancel',off); }
+bindHold('tLeft',function(){keys['arrowleft']=true;},function(){keys['arrowleft']=false;});
+bindHold('tRight',function(){keys['arrowright']=true;},function(){keys['arrowright']=false;});
+bindHold('tUp',function(){keys['arrowup']=true;},function(){keys['arrowup']=false;});
+bindHold('tDown',function(){keys['arrowdown']=true;},function(){keys['arrowdown']=false;});
+bindHold('tBoost',function(){touch.boost=true;},function(){touch.boost=false;});
+
+window.addEventListener('keydown',function(e){
+  var k=e.key.toLowerCase();
+  if(k===' ')k=' ';
+  keys[k]=true;
+  if(['arrowup','arrowdown','arrowleft','arrowright',' '].indexOf(k)>=0)e.preventDefault();
+  if(k==='r'){ newMatch(); state='play'; ov.classList.add('hidden'); playBtn.textContent='▶ Kick Off'; }
+  if(k==='p'&&state==='play'){ paused=!paused; }
+  if(k==='enter'&&state!=='play'){ startGame(); }
+});
+window.addEventListener('keyup',function(e){ keys[e.key.toLowerCase()]=false; });
+
+function startGame(){ state='play'; paused=false; newMatch(); ov.classList.add('hidden'); beep(660,.1,'square',.06); }
+playBtn.addEventListener('click',startGame);
+howBtn.addEventListener('click',function(){
+  twoPlayer=!twoPlayer;
+  howBtn.textContent=twoPlayer?'1 Player (vs CPU)':'2 Players (local)';
+  modeCard.innerHTML=twoPlayer?'👥 <b>Mode:</b> local 2P — P1 (orange, right): <kbd>Arrows</kbd>+<kbd>Shift</kbd>. P2 (blue, left): <kbd>WASD</kbd>+<kbd>F</kbd>.':'🤖 <b>Mode:</b> vs CPU. Press “2 Players” for local multiplayer: P2 uses <kbd>WASD</kbd> + <kbd>F</kbd> boost, P1 uses <kbd>Arrows</kbd> + <kbd>Shift</kbd>.';
+  startGame();
+});
+cvs.addEventListener('pointerdown',function(){ if(state!=='play')startGame(); });
+
+updateScore(); elT.textContent=fmt(MATCH_LEN);
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
