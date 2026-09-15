@@ -196,19 +196,128 @@ scene.fog = new THREE.Fog(0x87ceeb, 30, 110);
 
 const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 500);
 
-scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x6b8e4e, 0.95));
+const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x6b8e4e, 0.95);
+scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 1.1);
 sun.position.set(40, 60, 20);
 scene.add(sun);
-scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+const moonLight = new THREE.DirectionalLight(0x8fa8ff, 0.0);
+moonLight.position.set(-40, 60, -20);
+scene.add(moonLight);
+const amb = new THREE.AmbientLight(0xffffff, 0.25);
+scene.add(amb);
+
+// ============ Смена дня и ночи 🌞🌙 ============
+const DAY_LEN = 420; // секунд на полные сутки
+const timeState = { t: 0.32, paused: false }; // t: 0=полночь, 0.25=рассвет, 0.5=полдень, 0.75=закат
+const WORLD_C = new THREE.Vector3(WX / 2, 0, WZ / 2);
+
+const SKY = {
+  night: new THREE.Color(0x0b1026),
+  dawn: new THREE.Color(0xff9a56),
+  day: new THREE.Color(0x87ceeb),
+  sunset: new THREE.Color(0xff7e47),
+};
+const _skyTmp = new THREE.Color();
+
+// Солнце и луна — плоские диски, всегда повёрнуты к камере
+const sunMesh = new THREE.Mesh(
+  new THREE.CircleGeometry(9, 24),
+  new THREE.MeshBasicMaterial({ color: 0xffdd55, fog: false, transparent: true, opacity: 0.95 })
+);
+const moonMesh = new THREE.Mesh(
+  new THREE.CircleGeometry(6, 24),
+  new THREE.MeshBasicMaterial({ color: 0xe8ecf5, fog: false, transparent: true, opacity: 0.95 })
+);
+scene.add(sunMesh, moonMesh);
+
+// Звёзды
+let starMat;
+{
+  const N = 450;
+  const pos = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    const th = Math.random() * Math.PI * 2;
+    const ph = Math.acos(Math.random() * 0.95); // верхняя полусфера
+    const r = 280;
+    pos[i * 3] = WORLD_C.x + r * Math.sin(ph) * Math.cos(th);
+    pos[i * 3 + 1] = r * Math.cos(ph) - 20;
+    pos[i * 3 + 2] = WORLD_C.z + r * Math.sin(ph) * Math.sin(th);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0, fog: false, depthWrite: false });
+  scene.add(new THREE.Points(g, starMat));
+}
+
+function updateDayNight(dt) {
+  if (!timeState.paused) {
+    timeState.t = (timeState.t + dt / DAY_LEN) % 1;
+  }
+  const ang = (timeState.t - 0.25) * Math.PI * 2; // высота солнца
+  const sh = Math.sin(ang); // -1..1
+  const daylight = Math.max(0, Math.min(1, sh * 1.6 + 0.25));
+  const dusk = Math.max(0, 1 - Math.abs(sh) * 3.2) * (sh > -0.15 ? 1 : 0); // полоса у горизонта
+  const night = 1 - daylight;
+
+  // Позиции солнца и луны на орбите вокруг центра мира
+  const R = 180;
+  const cx = Math.cos(ang), sy = Math.sin(ang);
+  sun.position.set(WORLD_C.x + cx * R, sy * R, WORLD_C.z + 40);
+  sunMesh.position.set(WORLD_C.x + cx * R, sy * R, WORLD_C.z + 40 - 60);
+  sunMesh.lookAt(camera.position);
+  const mang = ang + Math.PI;
+  moonLight.position.set(WORLD_C.x + Math.cos(mang) * R, Math.max(8, Math.sin(mang) * R), WORLD_C.z - 40);
+  moonMesh.position.set(WORLD_C.x + Math.cos(mang) * R, Math.max(10, Math.sin(mang) * R), WORLD_C.z - 100);
+  moonMesh.lookAt(camera.position);
+
+  // Свет
+  sun.intensity = 0.05 + daylight * 1.1;
+  sun.color.setHex(0xffffff).lerp(new THREE.Color(0xff9a3c), dusk * 0.85);
+  moonLight.intensity = night * 0.35;
+  hemi.intensity = 0.22 + daylight * 0.75;
+  amb.intensity = 0.12 + daylight * 0.16;
+
+  // Небо: ночь -> рассвет/закат -> день
+  const isDawn = Math.cos(ang) > 0; // восход (утро) или закат (вечер)
+  const edge = isDawn ? SKY.dawn : SKY.sunset;
+  _skyTmp.copy(SKY.night).lerp(SKY.day, daylight).lerp(edge, dusk * 0.55);
+  scene.background.copy(_skyTmp);
+  scene.fog.color.copy(_skyTmp);
+
+  starMat.opacity = night * 0.9;
+  cloudMat.color.setScalar(0.25 + daylight * 0.75);
+  cloudMat.opacity = 0.45 + daylight * 0.3;
+  sunMesh.material.opacity = sh > -0.12 ? 0.95 : 0;
+  moonMesh.material.opacity = Math.sin(mang) > -0.05 ? 0.95 : 0;
+  return { daylight, dusk, night };
+}
+
+function formatTime() {
+  const mins = Math.floor(timeState.t * 24 * 60);
+  return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+}
+function timeIcon() {
+  if (timeState.paused) return '⏸️';
+  const h = timeState.t * 24;
+  if (h < 4.5 || h >= 20.5) return '🌙';
+  if (h < 6 || h >= 19) return '🌆';
+  if (h < 17) return '☀️';
+  return '🌇';
+}
+function updateTimeBadge() {
+  const el = document.getElementById('time-badge');
+  if (el) el.textContent = `${timeIcon()} ${formatTime()}`;
+}
 
 // Облака
 const clouds = [];
+let cloudMat;
 {
-  const cm = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75 });
+  cloudMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75 });
   const cg = new THREE.BoxGeometry(1, 1, 1);
   for (let i = 0; i < 22; i++) {
-    const m = new THREE.Mesh(cg, cm);
+    const m = new THREE.Mesh(cg, cloudMat);
     m.position.set(Math.random() * WX, 30 + Math.random() * 4, Math.random() * WZ);
     m.scale.set(4 + Math.random() * 7, 1, 3 + Math.random() * 5);
     scene.add(m); clouds.push(m);
@@ -607,6 +716,8 @@ addEventListener('keydown', e => {
   if (e.code === 'Digit8') selectSlot(7);
   if (e.code === 'Digit9') selectSlot(8);
   if (e.code === 'KeyF') { player.fly = !player.fly; player.vel.y = 0; toast(player.fly ? '🕊️ Полёт включён' : '🚶 Режим ходьбы'); updateBadge(); }
+  if (e.code === 'KeyN') { timeState.paused = !timeState.paused; updateTimeBadge(); toast(timeState.paused ? '⏸️ Время остановлено' : '▶ Время идёт'); }
+  if (e.code === 'KeyT') { timeState.t = (timeState.t + 1 / 24) % 1; updateTimeBadge(); }
   keys[e.code] = true;
   if (e.code === 'Space') e.preventDefault();
 });
@@ -864,7 +975,7 @@ function saveGame() {
       z: +c.mesh.position.z.toFixed(2),
       yaw: +c.yaw.toFixed(2),
     }));
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ seed, data: btoa(bin), cows: cowData }));
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ seed, data: btoa(bin), cows: cowData, time: +timeState.t.toFixed(4) }));
     toast('💾 Мир сохранён');
   } catch { toast('⚠️ Не удалось сохранить'); }
 }
@@ -872,13 +983,14 @@ function loadGame() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return false;
-    const { seed: s, data: b64, cows: sc } = JSON.parse(raw);
+    const { seed: s, data: b64, cows: sc, time: st } = JSON.parse(raw);
     const bin = atob(b64);
     if (bin.length !== WX * WY * WZ) return false;
     seed = s;
     data = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) data[i] = bin.charCodeAt(i);
     savedCows = Array.isArray(sc) ? sc : null;
+    if (typeof st === 'number' && st >= 0 && st < 1) timeState.t = st;
     return true;
   } catch { return false; }
 }
@@ -914,6 +1026,11 @@ document.getElementById('new-world-btn').onclick = () => {
 document.getElementById('mode-badge').onclick = () => {
   player.fly = !player.fly; updateBadge();
 };
+document.getElementById('time-badge').onclick = () => {
+  timeState.paused = !timeState.paused;
+  updateTimeBadge();
+  toast(timeState.paused ? '⏸️ Время остановлено' : '▶ Время идёт');
+};
 
 // ============ Главный цикл ============
 const fpsEl = document.getElementById('fps');
@@ -929,6 +1046,7 @@ function animate(now) {
   if (menu.classList.contains('hidden')) stepPlayer(dt);
   updateCows(dt);
   updateHearts(dt);
+  updateDayNight(dt);
   for (const c of clouds) { c.position.x += dt * 0.6; if (c.position.x > WX + 8) c.position.x = -8; }
 
   camera.position.set(player.pos.x, player.pos.y + player.eye, player.pos.z);
@@ -977,6 +1095,7 @@ function animate(now) {
   if (fpsT >= 0.5) {
     fpsEl.textContent = `${Math.round(frames / fpsT)} FPS`;
     posEl.textContent = `X: ${player.pos.x.toFixed(1)} Y: ${player.pos.y.toFixed(1)} Z: ${player.pos.z.toFixed(1)}`;
+    updateTimeBadge();
     frames = 0; fpsT = 0;
   }
   window.__sceneReady = true;
@@ -996,5 +1115,6 @@ rebuildWorld();
 spawnPlayer();
 spawnCows();
 restoreCows();
-window.__game = { cows, player, petCow, moo, spawnCows, getBlock, groundTopY };
+updateTimeBadge();
+window.__game = { cows, player, petCow, moo, spawnCows, getBlock, groundTopY, timeState, updateTimeBadge, formatTime };
 requestAnimationFrame(animate);
