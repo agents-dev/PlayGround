@@ -1,0 +1,17 @@
+{
+  "name": "brutalstrike",
+  "version": "1.0.0",
+  "description": "BrutalStrike — browser tactical FPS built with Three.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3002 --host",
+    "build": "vite build",
+    "preview": "vite preview --port 3002"
+  },
+  "dependencies": {
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  }
+}
