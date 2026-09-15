@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Live Backdrop — Playable Canvas</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-testid="live-backdrop">
+    <canvas id="backdrop" aria-label="Live animated backdrop"></canvas>
+
+    <main class="hud">
+      <span class="eyebrow">Live backdrop test</span>
+      <h1>Live Backdrop</h1>
+      <p>
+        Move the mouse to stir the particles. Click / tap for a burst.
+        Press <kbd>Space</kbd> to pause, <kbd>G</kbd> to toggle the grid.
+      </p>
+      <div class="stats">
+        <span>FPS <strong id="fps">—</strong></span>
+        <span>Particles <strong id="pcount">—</strong></span>
+        <span>Renderer <strong id="renderer">canvas2d</strong></span>
+      </div>
+      <div class="controls">
+        <label>Particles <input id="density" type="range" min="60" max="600" value="260" /></label>
+        <button id="burst" type="button">Burst</button>
+        <button id="pause" type="button">Pause</button>
+      </div>
+      <p id="status" class="status">Starting…</p>
+    </main>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
