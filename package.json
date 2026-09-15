@@ -1,0 +1,1 @@
+{"name": "turbo-league", "version": "1.0.0", "description": "Turbo League — playable browser car-soccer (Rocket League style). Zero dependencies, single-file canvas game.", "type": "commonjs", "scripts": {"start": "node server.js", "build": "node -e \"console.log('no build step: static single-file app')\""}}
