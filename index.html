@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STARCRAFT 3D — Pocket RTS</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app">
+  <canvas id="game"></canvas>
+
+  <!-- drag select box -->
+  <div id="select-box" hidden></div>
+
+  <!-- Top resource bar -->
+  <div id="topbar">
+    <div class="logo">★ STARCRAFT <span>3D</span></div>
+    <div class="res"><i class="dot blue"></i><span id="r-min">850</span></div>
+    <div class="res"><i class="dot green"></i><span id="r-gas">320</span></div>
+    <div class="res"><i class="dot yellow"></i><span id="r-sup">18/34</span></div>
+    <div class="res renderer" id="r-render">WebGL2</div>
+    <div class="res fps" id="r-fps">60 fps</div>
+  </div>
+
+  <!-- Left help -->
+  <div id="help">
+    <b>COMMANDS</b>
+    <div><kbd>Drag LMB</kbd> select</div>
+    <div><kbd>RMB</kbd> move / attack</div>
+    <div><kbd>M</kbd> +marine 50⛁</div>
+    <div><kbd>T</kbd> +tank 150⛁</div>
+    <div><kbd>A</kbd> attack-move</div>
+    <div><kbd>WASD</kbd> / wheel cam</div>
+    <div><kbd>Q/E</kbd> rotate</div>
+  </div>
+
+  <!-- Event feed -->
+  <div id="feed"></div>
+
+  <!-- Bottom command panel -->
+  <div id="bottombar">
+    <canvas id="minimap" width="180" height="180"></canvas>
+    <div id="portrait"><div id="portrait-face">🪖</div><div id="portrait-name">MARINES ×8</div></div>
+    <div id="info">
+      <div id="sel-title">Terran Expedition Force</div>
+      <div id="sel-desc">Left-drag to box-select. Right-click to order. Marines auto-acquire zerglings in range. Hold <b>A</b> + right-click for attack-move. Build reinforcements with M / T.</div>
+      <div id="hp-wrap"><div id="hp-bar"></div></div>
+    </div>
+    <div id="buttons">
+      <button id="b-marine" title="Train Marine (M)">🪖<small>MARINE<br>50⛁</small></button>
+      <button id="b-tank" title="Build Siege Tank (T)">🛞<small>TANK<br>150⛁ 25⛽</small></button>
+      <button id="b-scan" title="Scanner Sweep (S)">📡<small>SCAN<br>25⚡</small></button>
+      <button id="b-nuke" title="Nuclear launch">☢️<small>NUKE<br>!!!</small></button>
+    </div>
+  </div>
+
+  <div id="toast" hidden></div>
+  <div id="nuke-flash" hidden></div>
+</div>
+<script type="module" src="main.js"></script>
+</body>
+</html>

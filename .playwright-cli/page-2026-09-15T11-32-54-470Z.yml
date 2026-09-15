@@ -1,0 +1,38 @@
+- generic [ref=f2e2]:
+  - generic [ref=f2e4]:
+    - generic [ref=f2e5]: ★ STARCRAFT 3D
+    - generic [ref=f2e6]: "850"
+    - generic [ref=f2e9]: "320"
+    - generic [ref=f2e12]: 18/34
+    - generic [ref=f2e15]: WebGL2 ✓
+    - generic [ref=f2e16]: 60 fps
+  - generic [ref=f2e17]:
+    - text: COMMANDS
+    - generic [ref=f2e18]: Drag LMB select
+    - generic [ref=f2e19]: RMB move / attack
+    - generic [ref=f2e20]: M +marine 50⛁
+    - generic [ref=f2e21]: T +tank 150⛁
+    - generic [ref=f2e22]: A attack-move
+    - generic [ref=f2e23]: WASD / wheel cam
+    - generic [ref=f2e24]: Q/E rotate
+  - generic: Welcome to STARCRAFT 3D. Defend the Terran base.
+  - generic [ref=f2e25]:
+    - generic [ref=f2e27]:
+      - generic [ref=f2e28]: 🪖
+      - generic [ref=f2e29]: MARINE ×5
+    - generic [ref=f2e30]:
+      - generic [ref=f2e31]: Selected — 5 unit(s)
+      - generic [ref=f2e32]: Left-drag to box-select. Right-click to order. Marines auto-acquire zerglings in range. Hold A + right-click for attack-move. Build reinforcements with M / T.
+    - generic [ref=f2e35]:
+      - button [ref=f2e36] [cursor=pointer]:
+        - text: 🪖
+        - generic [ref=f2e37]: MARINE50⛁
+      - button [ref=f2e38] [cursor=pointer]:
+        - text: 🛞
+        - generic [ref=f2e39]: TANK150⛁ 25⛽
+      - button [ref=f2e40] [cursor=pointer]:
+        - text: 📡
+        - generic [ref=f2e41]: SCAN25⚡
+      - button [ref=f2e42] [cursor=pointer]:
+        - text: ☢️
+        - generic [ref=f2e43]: NUKE!!!

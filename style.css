@@ -1,0 +1,43 @@
+:root{
+  --sc-blue:#35c8ff; --sc-green:#59ff7a; --sc-amber:#ffcf4d;
+  --panel:rgba(6,18,32,.82); --line:rgba(53,200,255,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#020409;font-family:"Consolas","SF Mono",Menlo,monospace;color:#cfeaff}
+#app{position:fixed;inset:0}
+#game{position:absolute;inset:0;width:100%;height:100%;display:block}
+#select-box{position:absolute;border:1px solid var(--sc-blue);background:rgba(53,200,255,.15);pointer-events:none;z-index:20}
+#topbar{position:absolute;top:0;left:0;right:0;height:40px;display:flex;align-items:center;gap:18px;padding:0 16px;background:linear-gradient(180deg,rgba(4,14,28,.95),rgba(4,14,28,.55) 80%,transparent);border-bottom:1px solid var(--line);z-index:10;font-size:14px}
+.logo{font-weight:900;letter-spacing:2px;color:#fff;text-shadow:0 0 12px var(--sc-blue)}
+.logo span{color:var(--sc-blue)}
+.res{display:flex;align-items:center;gap:6px}
+.dot{width:12px;height:12px;border-radius:2px;display:inline-block}
+.dot.blue{background:#35c8ff;box-shadow:0 0 8px #35c8ff}
+.dot.green{background:#59ff7a;box-shadow:0 0 8px #59ff7a}
+.dot.yellow{background:#ffcf4d;box-shadow:0 0 8px #ffcf4d}
+.renderer,.fps{margin-left:auto;font-size:11px;color:#8fd8ff;border:1px solid var(--line);padding:2px 8px;border-radius:10px}
+.fps{margin-left:0}
+#help{position:absolute;left:12px;top:56px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.7;z-index:10;backdrop-filter:blur(6px)}
+#help b{color:var(--sc-blue);letter-spacing:1px}
+#help kbd{background:#0e2a44;border:1px solid var(--line);border-radius:4px;padding:0 5px;color:#fff;font-size:11px}
+#feed{position:absolute;left:12px;bottom:190px;display:flex;flex-direction:column;gap:4px;z-index:10;pointer-events:none;max-width:340px}
+.feed-item{background:rgba(4,14,28,.8);border-left:3px solid var(--sc-blue);padding:4px 8px;font-size:12px;border-radius:0 6px 6px 0;animation:slidein .25s ease-out}
+.feed-item.war{border-color:#ff4d5e}.feed-item.good{border-color:var(--sc-green)}
+@keyframes slidein{from{transform:translateX(-12px);opacity:0}to{transform:none;opacity:1}}
+#bottombar{position:absolute;left:0;right:0;bottom:0;height:168px;display:flex;gap:14px;align-items:stretch;padding:10px 14px;background:linear-gradient(0deg,rgba(3,10,22,.96),rgba(3,10,22,.6));border-top:1px solid var(--line);z-index:10}
+#minimap{width:148px;height:148px;border:1px solid var(--line);border-radius:6px;background:#02070f;box-shadow:0 0 18px rgba(53,200,255,.25)}
+#portrait{width:150px;border:1px solid var(--line);border-radius:6px;background:radial-gradient(circle at 50% 30%,#12395c,#050f1e);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+#portrait-face{font-size:52px;filter:drop-shadow(0 0 10px var(--sc-blue))}
+#portrait-name{font-size:11px;color:var(--sc-amber);letter-spacing:1px}
+#info{flex:1;border:1px solid var(--line);border-radius:6px;padding:10px 12px;background:rgba(5,16,30,.6)}
+#sel-title{color:#fff;font-weight:700;letter-spacing:1px;margin-bottom:6px}
+#sel-desc{font-size:12px;line-height:1.55;color:#9fc6e2}
+#hp-wrap{margin-top:8px;height:8px;background:#0a1a2c;border-radius:4px;overflow:hidden;border:1px solid rgba(255,255,255,.15)}
+#hp-bar{height:100%;width:100%;background:linear-gradient(90deg,#37ff7a,#b6ff4d);transition:width .2s}
+#buttons{display:flex;gap:8px}
+#buttons button{width:84px;border:1px solid var(--line);background:linear-gradient(180deg,#123652,#081827);color:#dff3ff;border-radius:6px;font-size:26px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+#buttons button small{font-size:9px;line-height:1.3;color:var(--sc-amber)}
+#buttons button:hover{background:#174a73;box-shadow:0 0 12px rgba(53,200,255,.5)}
+#buttons button:active{transform:scale(.96)}
+#toast{position:absolute;top:64px;left:50%;transform:translateX(-50%);background:rgba(20,2,2,.9);border:1px solid #ff4d5e;color:#ffb9be;padding:10px 22px;border-radius:6px;z-index:30;font-weight:700;letter-spacing:1px}
+#nuke-flash{position:absolute;inset:0;background:radial-gradient(circle,#fff 0%,#ffd27a 20%,#ff6a00 45%,transparent 75%);z-index:40;pointer-events:none}
