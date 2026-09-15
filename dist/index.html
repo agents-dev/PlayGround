@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rocket League 3D — Car Soccer</title>
+    <meta name="description" content="Playable Rocket League style 3D car soccer in the browser. Drive, boost, jump and score!" />
+    <script type="module" crossorigin src="./assets/index-DrJ2aU4-.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DbcMvSYu.css">
+  </head>
+  <body data-scene-ready="false">
+    <div id="app">
+      <canvas id="game"></canvas>
+
+      <div id="hud">
+        <div id="scoreboard">
+          <div class="team blue"><span id="score-blue">0</span><label>YOU</label></div>
+          <div id="timer">5:00</div>
+          <div class="team orange"><label>CPU</label><span id="score-orange">0</span></div>
+        </div>
+        <div id="message" class="hidden"></div>
+        <div id="kickoff">KICKOFF!</div>
+      </div>
+
+      <div id="panel">
+        <h1>ROCKET LEAGUE 3D</h1>
+        <p>Drive the blue car. Hit the giant ball into the orange goal.</p>
+        <div id="controls-grid">
+          <span><b>W A S D</b> / arrows — drive &amp; steer</span>
+          <span><b>SHIFT</b> — boost</span>
+          <span><b>SPACE</b> — jump</span>
+          <span><b>R</b> — reset kickoff &nbsp; <b>C</b> — camera</span>
+        </div>
+        <div id="buttons">
+          <button id="btn-start">KICK OFF</button>
+          <button id="btn-reset" class="ghost">Reset ball</button>
+        </div>
+        <div id="stats">
+          <div id="speed">0 km/h</div>
+          <div id="boost-wrap"><div id="boost-bar"></div><span>BOOST</span></div>
+        </div>
+      </div>
+
+      <div id="touch">
+        <div class="t-left">
+          <button data-k="left">◀</button>
+          <button data-k="up">▲</button>
+          <button data-k="down">▼</button>
+          <button data-k="right">▶</button>
+        </div>
+        <div class="t-right">
+          <button data-k="boost">BOOST</button>
+          <button data-k="jump">JUMP</button>
+        </div>
+      </div>
+
+      <div id="credit">Three.js + Vite · no assets · <span id="fps">60</span> fps</div>
+    </div>
+  </body>
+</html>
