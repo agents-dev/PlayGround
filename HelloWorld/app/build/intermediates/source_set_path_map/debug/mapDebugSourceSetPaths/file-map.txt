@@ -1,0 +1,7 @@
+com.example.helloworld.app-pngs-0 /home/runner/work/PlayGround/PlayGround/HelloWorld/app/build/generated/res/pngs/debug
+com.example.helloworld.app-resValues-1 /home/runner/work/PlayGround/PlayGround/HelloWorld/app/build/generated/res/resValues/debug
+com.example.helloworld.app-packageDebugResources-2 /home/runner/work/PlayGround/PlayGround/HelloWorld/app/build/intermediates/incremental/debug/packageDebugResources/merged.dir
+com.example.helloworld.app-packageDebugResources-3 /home/runner/work/PlayGround/PlayGround/HelloWorld/app/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
+com.example.helloworld.app-debug-4 /home/runner/work/PlayGround/PlayGround/HelloWorld/app/build/intermediates/merged_res/debug/mergeDebugResources
+com.example.helloworld.app-debug-5 /home/runner/work/PlayGround/PlayGround/HelloWorld/app/src/debug/res
+com.example.helloworld.app-main-6 /home/runner/work/PlayGround/PlayGround/HelloWorld/app/src/main/res
