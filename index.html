@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mechapede — Mechanical Arcade Shooter</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%2311161d'/%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%23c9a227' stroke-width='2'/%3E%3Ccircle cx='8' cy='8' r='1.6' fill='%2338e1ff'/%3E%3C/svg%3E">
+<meta name="description" content="Mechapede: a 2D single-player mechanical arcade shooter. Deterministic 60Hz, static-hosted, no external services.">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<a class="skip" href="#game">Skip to game</a>
+<header class="topbar">
+  <div class="brand" aria-label="Mechapede title">MECHA<span>PEDE</span></div>
+  <div class="hud" role="status" aria-label="Score panel">
+    <div class="stat"><span class="label">Score</span><span id="score">0</span></div>
+    <div class="stat"><span class="label">Best</span><span id="high">0</span></div>
+    <div class="stat"><span class="label">Hulls</span><span id="lives">3</span></div>
+    <div class="stat"><span class="label">Wave</span><span id="wave">1</span></div>
+  </div>
+  <div class="controls-top">
+    <label class="sens-label">Trackball
+      <select id="sens" aria-label="Trackball sensitivity">
+        <option value="low">Low</option>
+        <option value="med" selected>Med</option>
+        <option value="high">High</option>
+      </select>
+    </label>
+    <button id="btn-mute" aria-pressed="false">Mute (M)</button>
+    <button id="btn-full">Fullscreen (F)</button>
+  </div>
+</header>
+<main class="stage">
+  <div class="cabinet">
+    <canvas id="game" width="720" height="768" role="img" tabindex="0"
+      aria-label="Mechapede playfield, 240 by 256 logical units. Move with WASD or arrow keys or trackball pointer. Hold Space or click to fire."></canvas>
+    <div id="overlay" class="overlay" role="dialog" aria-modal="false" aria-labelledby="overlay-title">
+      <h1 id="overlay-title">MECHAPEDE</h1>
+      <div id="overlay-body"></div>
+      <div class="btnrow">
+        <button id="btn-start" class="primary">Start (Enter)</button>
+        <button id="btn-resume" class="hidden">Resume (P)</button>
+        <button id="btn-restart" class="hidden">Restart</button>
+      </div>
+      <p class="hint">Click canvas for trackball capture · Esc exits capture</p>
+    </div>
+  </div>
+  <aside class="help" aria-label="How to play">
+    <h2>Field manual</h2>
+    <ul>
+      <li><strong>Move</strong> — <kbd>WASD</kbd> / arrows (x 4–236, y 208–248) or trackball flick; friction + precision braking.</li>
+      <li><strong>Fire</strong> — hold <kbd>Space</kbd> / primary-click. One bolt, 7 px/tick upward.</li>
+      <li><strong>Convoy</strong> — 12-link, 8 px spacing. Gears take 4 hits. Head <b>100</b>, body <b>10</b>; kills split the chain and seed a gear.</li>
+      <li><strong>Cyan gears</strong> electrify → poisoned dive. <strong>Crawler</strong> 300/600/900 by height · <strong>Dispenser</strong> 2-hit 200 · <strong>Drone</strong> 1000 (never coexists with dispenser).</li>
+      <li><strong>Hulls</strong> — 3 to start, +1 per 12,000 (max 7). Death repairs damaged gears +5 each.</li>
+      <li><strong>Keys</strong> — <kbd>P</kbd>/<kbd>Esc</kbd> pause · <kbd>M</kbd> mute · <kbd>F</kbd> fullscreen.</li>
+    </ul>
+    <p class="note">Deterministic 60&nbsp;Hz sim · seeded starts (<code>?seed=</code>) · high score &amp; prefs in localStorage · no network.</p>
+  </aside>
+</main>
+<div id="live" class="sr-only" aria-live="polite"></div>
+<footer class="foot"><span>Static build · place optional <code>assets/machine-interior.jpg</code> to skin the bay (procedural fallback built-in).</span></footer>
+<script src="js/sim.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/input.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/motion.js"></script>
+<script src="js/render.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
