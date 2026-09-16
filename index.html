@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Warcraft 3D — Mini RTS</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html,body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#0b0f14;
+    font-family: "Trebuchet MS", Verdana, system-ui, sans-serif; color:#f3e9c8; user-select:none; }
+  #app { position:fixed; inset:0; }
+  #game-canvas { position:absolute; inset:0; width:100%; height:100%; display:block; cursor:crosshair; }
+  /* Top bar */
+  #topbar { position:absolute; top:0; left:0; right:0; height:44px; display:flex; align-items:center; gap:14px;
+    padding:0 14px; background:linear-gradient(180deg, rgba(20,16,8,.95), rgba(20,16,8,.78));
+    border-bottom:2px solid #8a6b2f; z-index:20; font-size:14px; }
+  #topbar .logo { font-weight:900; letter-spacing:.5px; color:#ffd76a; text-shadow:0 2px 0 #000; white-space:nowrap; }
+  #topbar .res { display:flex; align-items:center; gap:6px; background:rgba(0,0,0,.45); border:1px solid #6b5320;
+    padding:4px 10px; border-radius:8px; white-space:nowrap; }
+  #topbar .res b { color:#fff; min-width:34px; text-align:right; }
+  #objective { margin-left:auto; font-size:12px; opacity:.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #wave-timer { color:#ff9a9a; font-weight:700; }
+  /* Bottom UI */
+  #bottombar { position:absolute; left:0; right:0; bottom:0; height:172px; display:flex; gap:10px; padding:10px;
+    background:linear-gradient(0deg, rgba(18,13,6,.97), rgba(18,13,6,.82)); border-top:2px solid #8a6b2f; z-index:20; }
+  #minimap-wrap { width:152px; height:152px; flex:0 0 152px; border:2px solid #8a6b2f; border-radius:8px; overflow:hidden; background:#0e2410; position:relative; }
+  #minimap { width:100%; height:100%; display:block; }
+  #sel-panel { flex:1 1 auto; min-width:0; display:flex; gap:10px; }
+  #sel-portrait { width:110px; flex:0 0 110px; background:rgba(0,0,0,.5); border:1px solid #6b5320; border-radius:8px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; padding:6px; text-align:center; }
+  #sel-portrait .big { font-size:42px; line-height:1; }
+  #sel-portrait .nm { font-size:12px; font-weight:700; margin-top:4px; }
+  #sel-portrait .hp { font-size:11px; opacity:.9; }
+  #sel-list { flex:1 1 auto; overflow:auto; font-size:12px; background:rgba(0,0,0,.35); border:1px solid #53431f; border-radius:8px; padding:6px 8px; }
+  #cmd-card { width:340px; flex:0 0 340px; display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .cmd { background:linear-gradient(180deg,#3a2f14,#211a0b); border:1px solid #a8842f; border-radius:8px; color:#ffe9a8;
+    font-size:11px; font-weight:700; padding:7px 4px; cursor:pointer; line-height:1.15; min-height:48px; }
+  .cmd small { display:block; font-weight:400; opacity:.85; font-size:10px; }
+  .cmd:hover { filter:brightness(1.25); }
+  .cmd:disabled { opacity:.35; cursor:default; filter:grayscale(.8); }
+  .cmd.active { outline:2px solid #ffd76a; }
+  /* selection box */
+  #selbox { position:absolute; border:1px solid #7CFC00; background:rgba(124,252,0,.12); display:none; z-index:15; pointer-events:none; }
+  /* messages */
+  #msgs { position:absolute; left:50%; transform:translateX(-50%); top:56px; z-index:25; display:flex; flex-direction:column;
+    gap:6px; align-items:center; pointer-events:none; width:min(640px,92vw); }
+  .msg { background:rgba(0,0,0,.72); border:1px solid #a8842f; padding:6px 14px; border-radius:20px; font-size:13px; animation:fade 4s forwards; }
+  @keyframes fade { 0%{opacity:0; transform:translateY(-6px);} 10%{opacity:1; transform:none;} 80%{opacity:1;} 100%{opacity:0;} }
+  #hint { position:absolute; left:12px; top:56px; z-index:20; font-size:12px; background:rgba(0,0,0,.6);
+    border:1px solid #555; padding:8px 10px; border-radius:8px; max-width:300px; line-height:1.5; }
+  #hint kbd { background:#222; border:1px solid #666; border-radius:4px; padding:0 5px; font-size:11px; }
+  /* queue */
+  #queue { display:flex; gap:4px; margin-top:6px; flex-wrap:wrap; }
+  .qitem { background:#111; border:1px solid #888; border-radius:6px; font-size:11px; padding:2px 6px; }
+  /* overlay */
+  #overlay { position:absolute; inset:0; z-index:50; display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(ellipse at center, rgba(40,20,5,.88), rgba(0,0,0,.94)); padding:18px; }
+  #overlay.hidden { display:none; }
+  #card { max-width:620px; width:100%; background:linear-gradient(180deg,#2b2110,#14100a); border:3px solid #c9a13b;
+    border-radius:14px; padding:22px 22px 18px; text-align:center; box-shadow:0 20px 80px #000; }
+  #card h1 { margin:0 0 4px; color:#ffd76a; font-size:34px; letter-spacing:1px; text-shadow:0 3px 0 #000; }
+  #card h2 { margin:0 0 10px; font-size:14px; font-weight:400; opacity:.85; }
+  #card p { font-size:13px; line-height:1.6; text-align:left; background:rgba(0,0,0,.4); padding:10px 12px; border-radius:8px; }
+  #start-btn { margin-top:12px; font-size:18px; font-weight:900; padding:12px 28px; border-radius:10px; cursor:pointer;
+    background:linear-gradient(180deg,#ffe27a,#c9962b); border:2px solid #fff3b0; color:#3a2500; }
+  #start-btn:hover { filter:brightness(1.1); }
+  #end-screen { position:absolute; inset:0; z-index:60; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.7); }
+  #end-screen.show { display:flex; }
+  #end-card { background:#1a1409; border:3px solid #c9a13b; border-radius:12px; padding:26px 34px; text-align:center; }
+  #end-card h1 { margin:0 0 8px; font-size:36px; }
+  #restart-btn { font-size:16px; font-weight:800; padding:10px 22px; border-radius:8px; cursor:pointer; }
+  #fps { position:absolute; right:10px; top:52px; font-size:11px; opacity:.7; z-index:20; }
+  @media (max-width:760px){
+    #bottombar { height:210px; flex-wrap:wrap; overflow:auto; }
+    #cmd-card { width:100%; flex:1 1 100%; }
+    #hint { display:none; }
+    #objective { display:none; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app">
+  <canvas id="game-canvas"></canvas>
+  <div id="selbox"></div>
+  <div id="topbar">
+    <div class="logo">⚔️ WARCRAFT 3D</div>
+    <div class="res">🪙 <b id="r-gold">0</b></div>
+    <div class="res">🪵 <b id="r-wood">0</b></div>
+    <div class="res">🍖 <b id="r-food">0/0</b></div>
+    <div class="res">💀 <b id="r-kills">0</b></div>
+    <div id="objective">Destroy the <b style="color:#ff7b7b">Orc Stronghold</b> (north-east) • Next wave in <span id="wave-timer">60</span>s</div>
+  </div>
+  <div id="msgs"></div>
+  <div id="hint">
+    <b>Controls</b><br>
+    <kbd>Left-drag</kbd> select army • <kbd>Right-click</kbd> move / attack / gather<br>
+    <kbd>WASD</kbd> pan • <kbd>Q</kbd>/<kbd>E</kbd> rotate • <kbd>Wheel</kbd> zoom<br>
+    <kbd>A</kbd> attack-move • <kbd>S</kbd> stop • <kbd>H</kbd> hold • <kbd>Esc</kbd> cancel
+  </div>
+  <div id="fps"></div>
+  <div id="bottombar">
+    <div id="minimap-wrap"><canvas id="minimap" width="152" height="152"></canvas></div>
+    <div id="sel-panel">
+      <div id="sel-portrait"><div class="big">🛡️</div><div class="nm">No selection</div><div class="hp"></div><div id="queue"></div></div>
+      <div id="sel-list">Select peasants to gather 🪙 gold (yellow crystals, east) and 🪵 wood (trees). Train an army, build towers &amp; barracks, and raze the Orc base!<br><br>Tip: select Town Hall → train 3 peasants → right-click gold mine. Select a peasant → build Farm for +10 supply.</div>
+    </div>
+    <div id="cmd-card"></div>
+  </div>
+  <div id="overlay">
+    <div id="card">
+      <h1>⚔️ WARCRAFT 3D</h1>
+      <h2>A tiny browser RTS — humans vs orcs • Three.js • no assets, all procedural</h2>
+      <p>
+      🛖 <b>Build:</b> Town Hall trains Peasants. Barracks trains Footmen &amp; Archers. Farms give supply. Towers defend.<br>
+      ⛏️ <b>Gather:</b> right-click gold mine / trees with a peasant. They return to the Hall automatically.<br>
+      ⚔️ <b>Fight:</b> drag-select your army, right-click orcs to attack, or press <b>A</b> then click for attack-move.<br>
+      🏆 <b>Win:</b> destroy the Orc Stronghold in the north-east. <b>Lose:</b> if your Town Hall falls. Survive the waves!
+      </p>
+      <button id="start-btn">⚔️ START BATTLE</button>
+      <div style="margin-top:8px;font-size:11px;opacity:.7">WASD pan • Q/E rotate • wheel zoom • right-click = smart order</div>
+    </div>
+  </div>
+  <div id="end-screen"><div id="end-card"><h1 id="end-title">Victory!</h1><div id="end-sub"></div><br><button id="restart-btn">↻ Play again</button></div></div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+
+// ============ helpers ============
+const $ = id => document.getElementById(id);
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const dist2d = (a,b)=>Math.hypot(a.x-b.x, a.z-b.z);
+function toast(t){ const d=document.createElement('div'); d.className='msg'; d.textContent=t; $('msgs').appendChild(d); setTimeout(()=>d.remove(),4100); }
+
+// ============ audio (procedural) ============
+let AC=null;
+function sfx(kind){
+  try{
+    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+    const t=AC.currentTime, o=AC.createOscillator(), g=AC.createGain();
+    o.connect(g); g.connect(AC.destination);
+    const cfg={ sword:{f:220,d:.12,type:'square',v:.06}, bow:{f:660,d:.1,type:'sine',v:.07},
+      gold:{f:1320,d:.12,type:'sine',v:.05}, build:{f:140,d:.2,type:'sawtooth',v:.05},
+      die:{f:110,d:.3,type:'sawtooth',v:.07}, train:{f:440,d:.2,type:'triangle',v:.06},
+      boom:{f:70,d:.4,type:'sawtooth',v:.09}, click:{f:880,d:.05,type:'sine',v:.04} }[kind]||{f:440,d:.1,type:'sine',v:.05};
+    o.type=cfg.type; o.frequency.setValueAtTime(cfg.f,t); o.frequency.exponentialRampToValueAtTime(Math.max(30,cfg.f*0.5),t+cfg.d);
+    g.gain.setValueAtTime(cfg.v,t); g.gain.exponentialRampToValueAtTime(0.0001,t+cfg.d);
+    o.start(t); o.stop(t+cfg.d+0.02);
+  }catch(e){}
+}
+
+// ============ renderer / scene ============
+const canvas = $('game-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87b5e0);
+scene.fog = new THREE.Fog(0x87b5e0, 90, 220);
+const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.5, 600);
+
+const hemi = new THREE.HemisphereLight(0xbfd9ff, 0x3d5a2a, 0.95); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff2cc, 1.9);
+sun.position.set(-40, 70, -20); sun.castShadow = true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.left=-70; sun.shadow.camera.right=70; sun.shadow.camera.top=70; sun.shadow.camera.bottom=-70;
+sun.shadow.camera.far=220; scene.add(sun);
+
+// camera rig
+const camTarget = new THREE.Vector3(-18,0,-14);
+let camYaw = Math.PI*0.25, camDist = 42, camPitch = 0.92;
+function updateCamera(){
+  const x = camTarget.x + Math.cos(camYaw)*Math.cos(camPitch)*camDist;
+  const z = camTarget.z + Math.sin(camYaw)*Math.cos(camPitch)*camDist;
+  const y = Math.sin(camPitch)*camDist;
+  camera.position.set(x,y,z); camera.lookAt(camTarget.x, 2, camTarget.z);
+}
+function resize(){ renderer.setSize(innerWidth, innerHeight, false); camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize(); updateCamera();
+
+// ============ map ============
+const MAP = 96, HALF = MAP/2;
+const groundGeo = new THREE.PlaneGeometry(MAP, MAP, 48, 48);
+groundGeo.rotateX(-Math.PI/2);
+{
+  const pos = groundGeo.attributes.position, colors=[];
+  const cGrass=new THREE.Color(0x4a8f3c), cGrass2=new THREE.Color(0x5da24a),
+        cDirt=new THREE.Color(0x8a6f3f), cWater=new THREE.Color(0x2f6fb5);
+  for(let i=0;i<pos.count;i++){
+    const x=pos.getX(i), z=pos.getZ(i);
+    // water pond south-west
+    const pond = Math.hypot(x+30, z-28) < 13;
+    // dirt road diagonal
+    const road = Math.abs((x+z)/2) < 2.2;
+    let c;
+    if(pond) c=cWater;
+    else if(road) c=cDirt;
+    else c = ((Math.sin(x*0.7)+Math.cos(z*0.6))>0.3)?cGrass2:cGrass;
+    // darken edges
+    const edge = Math.max(Math.abs(x),Math.abs(z))/HALF;
+    c = c.clone().multiplyScalar(1-edge*0.25);
+    colors.push(c.r,c.g,c.b);
+    if(pond) pos.setY(i,-0.55);
+    else pos.setY(i, Math.sin(x*0.25)*Math.cos(z*0.22)*0.35);
+  }
+  groundGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors,3));
+  groundGeo.computeVertexNormals();
+}
+const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ vertexColors:true, roughness:1 }));
+ground.receiveShadow = true; scene.add(ground);
+const groundPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
+function groundPoint(clientX, clientY){
+  const r = new THREE.Raycaster();
+  const ndc = new THREE.Vector2((clientX/innerWidth)*2-1, -(clientY/innerHeight)*2+1);
+  r.setFromCamera(ndc, camera);
+  const p = new THREE.Vector3();
+  return r.ray.intersectPlane(groundPlane, p) ? p : null;
+}
+// border cliffs
+{
+  const wallMat = new THREE.MeshStandardMaterial({ color:0x5b4a2e, roughness:1 });
+  const mk=(w,d,x,z)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,4,d),wallMat); m.position.set(x,1,z); m.receiveShadow=true; scene.add(m); };
+  mk(MAP+4,2,0,-HALF-1); mk(MAP+4,2,0,HALF+1); mk(2,MAP+4,-HALF-1,0); mk(2,MAP+4,HALF+1,0);
+}
+// decorative clouds
+{
+  const cm = new THREE.MeshBasicMaterial({ color:0xffffff, transparent:true, opacity:.85 });
+  for(let i=0;i<8;i++){ const s=new THREE.Mesh(new THREE.SphereGeometry(2+Math.random()*2,10,8),cm);
+    s.position.set((Math.random()-.5)*140, 34+Math.random()*10,(Math.random()-.5)*140); s.scale.x=2.2; scene.add(s); }
+}
+
+// ============ game state ============
+const G = {
+  gold: 650, wood: 250, kills:0, time:0, waveIn:60, waveNum:0, over:false, started:false,
+  units:[], buildings:[], trees:[], mines:[], projectiles:[], effects:[],
+  selected:new Set(), foodUsed:0,
+};
+function foodCap(){ let c=10; for(const b of G.buildings){ if(b.dead||b.team!=='blue') continue;
+  if(b.kind==='farm'&&b.built) c+=10; if(b.kind==='hall'&&b.built) c+=10; } return c; }
+
+// ============ materials / factories ============
+const MAT = {
+  blue: new THREE.MeshStandardMaterial({ color:0x2b5fd9, roughness:.7 }),
+  red: new THREE.MeshStandardMaterial({ color:0xc23b2a, roughness:.7 }),
+  skin: new THREE.MeshStandardMaterial({ color:0xe8b07e, roughness:.8 }),
+  skinOrc: new THREE.MeshStandardMaterial({ color:0x5da24a, roughness:.8 }),
+  brown: new THREE.MeshStandardMaterial({ color:0x6b4a26, roughness:.9 }),
+  gray: new THREE.MeshStandardMaterial({ color:0x8b8f98, roughness:.6, metalness:.3 }),
+  gold: new THREE.MeshStandardMaterial({ color:0xffd23f, roughness:.3, metalness:.7, emissive:0x6b4e00, emissiveIntensity:.35 }),
+  wood: new THREE.MeshStandardMaterial({ color:0x7a5230, roughness:.95 }),
+  leaf: new THREE.MeshStandardMaterial({ color:0x2e7d32, roughness:.9 }),
+  leaf2: new THREE.MeshStandardMaterial({ color:0x388e3c, roughness:.9 }),
+  stone: new THREE.MeshStandardMaterial({ color:0x9a9a9a, roughness:.9 }),
+  roofB: new THREE.MeshStandardMaterial({ color:0x1e4fd8, roughness:.8 }),
+  roofR: new THREE.MeshStandardMaterial({ color:0xb02020, roughness:.8 }),
+  wall: new THREE.MeshStandardMaterial({ color:0xd9c9a0, roughness:.9 }),
+  dark: new THREE.MeshStandardMaterial({ color:0x222222, roughness:.9 }),
+};
+function shadowify(o){ o.traverse(m=>{ if(m.isMesh){ m.castShadow=true; m.receiveShadow=true; } }); }
+function hpBar(obj, w=2.2){
+  const g = new THREE.Group();
+  const bg = new THREE.Mesh(new THREE.PlaneGeometry(w,.28), new THREE.MeshBasicMaterial({ color:0x300000, depthTest:false, transparent:true, opacity:.9 }));
+  const fg = new THREE.Mesh(new THREE.PlaneGeometry(w,.28), new THREE.MeshBasicMaterial({ color:0x39d353, depthTest:false, transparent:true, opacity:.95 }));
+  fg.position.z=0.01; g.add(bg,fg); g.position.y=obj; g.userData={bg,fg,w};
+  return g;
+}
+function setBar(g, frac, ally){
+  frac=clamp(frac,0,1);
+  g.userData.fg.scale.x=frac; g.userData.fg.position.x=-(1-frac)*g.userData.w/2;
+  g.userData.fg.material.color.set(ally? (frac>.5?0x39d353:frac>.25?0xffc107:0xff3b30) : 0xff3b30);
+  g.visible = frac<0.999;
+}
+function makeHumanoid({ orc=false, weapon='sword' }={}){
+  const g = new THREE.Group();
+  const legM = orc? MAT.skinOrc : MAT.brown;
+  const torsoM = orc? new THREE.MeshStandardMaterial({color:0x4a3220,roughness:.9}) : MAT.blue;
+  const l1=new THREE.Mesh(new THREE.BoxGeometry(.32,.7,.32),legM); l1.position.set(-.2,.35,0);
+  const l2=l1.clone(); l2.position.x=.2;
+  const torso=new THREE.Mesh(new THREE.BoxGeometry(.85,1,.55),torsoM); torso.position.y=1.2;
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.34,12,10), orc?MAT.skinOrc:MAT.skin); head.position.y=2.05;
+  g.add(l1,l2,torso,head);
+  if(orc){ const t1=new THREE.Mesh(new THREE.ConeGeometry(.09,.35,6),new THREE.MeshStandardMaterial({color:0xe8e0c0}));
+    t1.position.set(-.22,2.35,0); const t2=t1.clone(); t2.position.x=.22; g.add(t1,t2); }
+  else { const helm=new THREE.Mesh(new THREE.SphereGeometry(.37,12,8,0,Math.PI*2,0,1.4),MAT.gray); helm.position.y=2.08; g.add(helm); }
+  let wp=null;
+  if(weapon==='sword'){ wp=new THREE.Mesh(new THREE.BoxGeometry(.12,1.1,.12),MAT.gray); wp.position.set(.62,1.3,0); wp.rotation.z=-.4; }
+  if(weapon==='bow'){ wp=new THREE.Mesh(new THREE.TorusGeometry(.4,.06,6,12,Math.PI*1.4),MAT.brown); wp.position.set(.55,1.4,0); wp.rotation.z=.6; }
+  if(weapon==='axe'){ const h=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,1.1,6),MAT.brown); h.position.set(.6,1.3,0); h.rotation.z=-.5;
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.5,.35,.08),MAT.gray); b.position.set(.85,1.7,0); const gg=new THREE.Group(); gg.add(h,b); wp=gg; }
+  if(weapon==='pick'){ wp=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,1,6),MAT.brown); wp.position.set(.55,1.2,.2); wp.rotation.z=-.6; }
+  if(wp) g.add(wp);
+  g.userData.weapon=wp; shadowify(g);
+  return g;
+}
+function makeTree(x,z,s=1){
+  const g=new THREE.Group();
+  const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.35*s,.5*s,2.4*s,7),MAT.wood); trunk.position.y=1.2*s;
+  const c1=new THREE.Mesh(new THREE.ConeGeometry(1.8*s,2.8*s,8),MAT.leaf); c1.position.y=3.2*s;
+  const c2=new THREE.Mesh(new THREE.ConeGeometry(1.3*s,2*s,8),MAT.leaf2); c2.position.y=4.6*s;
+  g.add(trunk,c1,c2); g.position.set(x,0,z); shadowify(g); scene.add(g);
+  const t={ mesh:g, x, z, wood:220, alive:true, isTree:true, radius:1.2 };
+  G.trees.push(t); return t;
+}
+function makeGoldMine(x,z){
+  const g=new THREE.Group();
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(3,3.6,1.4,9),MAT.stone); base.position.y=.7;
+  g.add(base);
+  for(let i=0;i<7;i++){ const c=new THREE.Mesh(new THREE.OctahedronGeometry(.7+Math.random()*.5),MAT.gold);
+    c.position.set((Math.random()-.5)*3.6, 1.6+Math.random()*1.2,(Math.random()-.5)*3.6); c.rotation.set(Math.random(),Math.random(),0); g.add(c); }
+  g.position.set(x,0,z); shadowify(g); scene.add(g);
+  const m={ mesh:g, x, z, gold:6000, alive:true, isMine:true, radius:3.6 };
+  G.mines.push(m); return m;
+}
+function makeBuilding(kind, x, z, team){
+  const g=new THREE.Group(); const ally = team==='blue';
+  let hp=1200, size=4, name=kind;
+  const wallM = MAT.wall.clone();
+  if(kind==='hall'){ hp=2600; size=6;
+    const base=new THREE.Mesh(new THREE.BoxGeometry(6,2.6,6),wallM); base.position.y=1.3;
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(4.6,2.6,4), ally?MAT.roofB:MAT.roofR); roof.position.y=3.9; roof.rotation.y=Math.PI/4;
+    const door=new THREE.Mesh(new THREE.BoxGeometry(1.4,1.8,.2),MAT.dark); door.position.set(0,.9,3.01);
+    const tow=new THREE.Mesh(new THREE.BoxGeometry(1.6,4.4,1.6),wallM); tow.position.set(2.2,2.2,-2.2);
+    const tr=new THREE.Mesh(new THREE.ConeGeometry(1.4,1.6,4),ally?MAT.roofB:MAT.roofR); tr.position.set(2.2,5.2,-2.2); tr.rotation.y=Math.PI/4;
+    g.add(base,roof,door,tow,tr); name = ally?'Town Hall':'Orc Stronghold';
+  } else if(kind==='barracks'){ hp=1400; size=5;
+    const base=new THREE.Mesh(new THREE.BoxGeometry(5,2.2,4),wallM); base.position.y=1.1;
+    const roof=new THREE.Mesh(new THREE.CylinderGeometry(0.1,3.4,2,4,1),ally?MAT.roofB:MAT.roofR); roof.position.y=3.2; roof.rotation.y=Math.PI/4;
+    const d=new THREE.Mesh(new THREE.BoxGeometry(1.2,1.6,.2),MAT.dark); d.position.set(0,.8,2.01); g.add(base,roof,d); name='Barracks';
+  } else if(kind==='farm'){ hp=600; size=3.4;
+    const base=new THREE.Mesh(new THREE.BoxGeometry(3.2,1.6,3.2),wallM); base.position.y=.8;
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(2.6,1.6,4),new THREE.MeshStandardMaterial({color:0xa33c1e,roughness:.9})); roof.position.y=2.4; roof.rotation.y=Math.PI/4;
+    g.add(base,roof); name='Farm';
+  } else if(kind==='tower'){ hp=800; size=2.6;
+    const base=new THREE.Mesh(new THREE.CylinderGeometry(1,1.3,4.4,8),new THREE.MeshStandardMaterial({color:0x7d7d7d,roughness:.9})); base.position.y=2.2;
+    const top=new THREE.Mesh(new THREE.CylinderGeometry(1.4,1.1,1,8),MAT.wood); top.position.y=4.7;
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(1.6,1.4,8),ally?MAT.roofB:MAT.roofR); roof.position.y=5.9;
+    g.add(base,top,roof); name='Guard Tower';
+  }
+  g.position.set(x,0,z); shadowify(g); scene.add(g);
+  const bar=hpBar(kind==='hall'?7:5); scene.add(bar);
+  const b={ kind, mesh:g, bar, x, z, team, hp, maxHp:hp, alive:true, dead:false, built:false, buildP:0,
+    size, radius:size*0.7, name, queue:[], trainT:0, cd:0, isBuilding:true };
+  if(kind!=='farm'&&kind!=='tower'){ b.buildP=1; b.built=true; }
+  else { b.built = team==='blue'? false : true; if(team==='red') b.buildP=1; }
+  // prebuilt player hall/barracks
+  if(team==='blue'&&(kind==='hall'||kind==='barracks')){ b.built=true; b.buildP=1; }
+  G.buildings.push(b); return b;
+}
+function spawnUnit(type, x, z, team){
+  const ally = team==='blue';
+  const mesh = makeHumanoid({ orc:!ally, weapon: type==='peasant'?'pick':type==='archer'?'bow':!ally?'axe':'sword' });
+  mesh.position.set(x,0,z); scene.add(mesh);
+  const bar = hpBar(2.2); scene.add(bar);
+  const stats = {
+    peasant:{hp:220,dmg:6,range:1.6,speed:7,food:1,icon:'🧑‍🌾',name:'Peasant'},
+    footman:{hp:550,dmg:16,range:2.0,speed:7.5,food:2,icon:'🛡️',name:'Footman'},
+    archer:{hp:320,dmg:13,range:14,speed:7.5,food:2,icon:'🏹',name:'Archer'},
+    grunt:{hp:600,dmg:18,range:2.0,speed:7,food:0,icon:'👹',name:'Grunt'},
+    peon:{hp:240,dmg:6,range:1.6,speed:6.5,food:0,icon:'👺',name:'Peon'},
+  }[type];
+  const u={ type, team, mesh, bar, x, z, hp:stats.hp, maxHp:stats.hp, dmg:stats.dmg, range:stats.range,
+    speed:stats.speed, food:stats.food, alive:true, state:'idle', tx:x, tz:z, target:null, gatherTarget:null,
+    carry:0, carryType:null, gatherT:0, atkT:0, icon:stats.icon, name:stats.name, isUnit:true, radius:.8, walkPh:Math.random()*6 };
+  G.units.push(u); return u;
+}
+
+// ============ initial world ============
+function buildWorld(){
+  // forests
+  const forestSpots=[[-34,8],[-28,-8],[-10,30],[14,-30],[34,6],[8,14],[-38,-22],[26,-8]];
+  for(const [fx,fz] of forestSpots) for(let i=0;i<9;i++) makeTree(fx+(Math.random()-.5)*12, fz+(Math.random()-.5)*12, .8+Math.random()*.7);
+  // gold mines
+  makeGoldMine(18,-14); makeGoldMine(24,18); makeGoldMine(-34,30);
+  // player base
+  makeBuilding('hall', -22, -18, 'blue');
+  makeBuilding('barracks', -14, -22, 'blue');
+  makeBuilding('farm', -26, -10, 'blue').built=true; G.buildings.at(-1).buildP=1;
+  // enemy base
+  makeBuilding('hall', 24, 22, 'red');
+  makeBuilding('barracks', 16, 26, 'red');
+  makeBuilding('tower', 29, 16, 'red');
+  makeBuilding('tower', 18, 16, 'red');
+  makeBuilding('farm', 28, 26, 'red');
+  // starting units
+  for(let i=0;i<3;i++) spawnUnit('peasant', -20+i*2, -14, 'blue');
+  spawnUnit('footman', -18, -12, 'blue');
+  G.foodUsed = 3*1 + 2; // 3 peasants + 1 footman
+  for(let i=0;i<2;i++) spawnUnit('grunt', 22+i*2, 18, 'red');
+  spawnUnit('peon', 26, 24, 'red'); spawnUnit('peon', 22, 26, 'red');
+}
+buildWorld();
+
+// selection ring
+const ringGeo = new THREE.RingGeometry(0.9, 1.15, 24); ringGeo.rotateX(-Math.PI/2);
+const ringMat = new THREE.MeshBasicMaterial({ color:0x51ff51, transparent:true, opacity:.9, depthWrite:false });
+const targetMarker = new THREE.Mesh(new THREE.RingGeometry(.7,1,20).rotateX(-Math.PI/2),
+  new THREE.MeshBasicMaterial({ color:0xff4444, transparent:true, opacity:.9, depthWrite:false }));
+targetMarker.visible=false; scene.add(targetMarker);
+let markerT=0;
+function showMarker(x,z,color=0xff4444){ targetMarker.position.set(x,.15,z); targetMarker.material.color.set(color); targetMarker.visible=true; markerT=0.8; }
+
+// ============ input: selection & orders ============
+const ray = new THREE.Raycaster();
+function pick(clientX, clientY){
+  const ndc=new THREE.Vector2((clientX/innerWidth)*2-1, -(clientY/innerHeight)*2+1);
+  ray.setFromCamera(ndc,camera);
+  const unitMeshes=[]; for(const u of G.units) if(u.alive){ u.mesh.updateMatrixWorld(); unitMeshes.push(u.mesh); }
+  const bMeshes=[]; for(const b of G.buildings) if(!b.dead){ b.mesh.updateMatrixWorld(); bMeshes.push(b.mesh); }
+  const hu=ray.intersectObjects(unitMeshes,true)[0];
+  if(hu){ let o=hu.object; while(o && !G.units.find(u=>u.mesh===o)) o=o.parent; const u=G.units.find(u=>u.mesh===o); if(u) return {kind:'unit',obj:u}; }
+  const hb=ray.intersectObjects(bMeshes,true)[0];
+  if(hb){ let o=hb.object; while(o && !G.buildings.find(b=>b.mesh===o)) o=o.parent; const b=G.buildings.find(b=>b.mesh===o); if(b) return {kind:'building',obj:b}; }
+  for(const t of G.trees){ if(!t.alive) continue; if(Math.hypot(t.x-camera.position.x,t.z-camera.position.z)>200) continue; }
+  // trees/mines via distance to ground point
+  const gp=groundPoint(clientX,clientY);
+  if(gp){ let best=null,bd=2.4;
+    for(const t of G.trees){ if(!t.alive||t.wood<=0) continue; const d=Math.hypot(t.x-gp.x,t.z-gp.z); if(d<bd){bd=d;best={kind:'tree',obj:t};} }
+    for(const m of G.mines){ if(!m.alive||m.gold<=0) continue; const d=Math.hypot(m.x-gp.x,m.z-gp.z); if(d<4.2&&d<bd+2){best={kind:'mine',obj:m};} }
+    if(best) return best;
+  }
+  return {kind:'ground', point:gp};
+}
+let lDown=false, lStart=null, attackMove=false, placing=null;
+const selbox=$('selbox');
+canvas.addEventListener('mousedown', e=>{
+  if(e.button===0){ lDown=true; lStart={x:e.clientX,y:e.clientY}; }
+  if(e.button===1){ mDown=true; mLast={x:e.clientX,y:e.clientY}; e.preventDefault(); }
+});
+addEventListener('mouseup', e=>{
+  if(e.button===0 && lDown){
+    lDown=false; selbox.style.display='none';
+    const dx=e.clientX-lStart.x, dy=e.clientY-lStart.y;
+    if(Math.hypot(dx,dy)<6){ handleClick(e); }
+    else { // box select
+      const x0=Math.min(lStart.x,e.clientX), x1=Math.max(lStart.x,e.clientX);
+      const y0=Math.min(lStart.y,e.clientY), y1=Math.max(lStart.y,e.clientY);
+      const added=new Set();
+      for(const u of G.units){ if(!u.alive||u.team!=='blue') continue;
+        const v=u.mesh.position.clone(); v.y+=1; v.project(camera);
+        const sx=(v.x*0.5+0.5)*innerWidth, sy=(-v.y*0.5+0.5)*innerHeight;
+        if(sx>x0&&sx<x1&&sy>y0&&sy<y1) added.add(u);
+      }
+      if(!e.shiftKey) G.selected.clear();
+      added.forEach(u=>G.selected.add(u));
+      sfx('click'); refreshPanel();
+    }
+  }
+  if(e.button===1) mDown=false;
+});
+addEventListener('mousemove', e=>{
+  if(lDown && lStart){
+    const x0=Math.min(lStart.x,e.clientX), y0=Math.min(lStart.y,e.clientY);
+    selbox.style.display='block';
+    selbox.style.left=x0+'px'; selbox.style.top=y0+'px';
+    selbox.style.width=Math.abs(e.clientX-lStart.x)+'px'; selbox.style.height=Math.abs(e.clientY-lStart.y)+'px';
+  }
+  if(mDown){ camTarget.x-=(e.clientX-mLast.x)*0.06; camTarget.z-=(e.clientY-mLast.y)*0.06;
+    camTarget.x=clamp(camTarget.x,-HALF,HALF); camTarget.z=clamp(camTarget.z,-HALF,HALF); mLast={x:e.clientX,y:e.clientY}; }
+});
+let mDown=false, mLast=null;
+canvas.addEventListener('contextmenu', e=>{ e.preventDefault();
+  const gp=groundPoint(e.clientX,e.clientY); if(gp) issueSmartOrder(e.clientX,e.clientY,gp); });
+canvas.addEventListener('wheel', e=>{ camDist=clamp(camDist+e.deltaY*0.03, 16, 110); updateCamera(); }, {passive:true});
+
+function handleClick(e){
+  const gp=groundPoint(e.clientX,e.clientY);
+  const hit=pick(e.clientX,e.clientY);
+  if(placing && gp){ tryPlace(placing, gp.x, gp.z); return; }
+  if(attackMove && gp){ orderAttackMove(gp.x,gp.z); attackMove=false; refreshPanel(); return; }
+  if(hit.kind==='unit'){
+    if(hit.obj.team==='blue'){ if(!e.shiftKey) G.selected.clear(); G.selected.add(hit.obj); sfx('click'); }
+    else { // attack enemy with selection
+      orderAttack(hit.obj); return;
+    }
+  } else if(hit.kind==='building'){
+    if(!e.shiftKey) G.selected.clear(); G.selected.add(hit.obj); sfx('click');
+  } else if(hit.kind==='tree'||hit.kind==='mine'){
+    // smart gather if peasants selected
+    const peas=[...G.selected].filter(o=>o.isUnit&&o.type==='peasant');
+    if(peas.length){ orderGather(hit.obj); return; }
+    if(!e.shiftKey) G.selected.clear();
+  } else { if(!e.shiftKey) G.selected.clear(); }
+  refreshPanel();
+}
+function myArmy(){ return [...G.selected].filter(o=>o.isUnit&&o.alive); }
+function issueSmartOrder(cx,cy,gp){
+  const army=myArmy(); if(!army.length){ const hit=pick(cx,cy);
+    if(hit.kind==='unit'&&hit.obj.team==='blue'){ G.selected.clear(); G.selected.add(hit.obj); refreshPanel(); } return; }
+  const hit=pick(cx,cy);
+  if(hit.kind==='unit'&&hit.obj.team==='red'){ orderAttack(hit.obj); showMarker(hit.obj.x,hit.obj.z); return; }
+  if(hit.kind==='building'&&hit.obj.team==='red'){ orderAttack(hit.obj); showMarker(hit.obj.x,hit.obj.z); return; }
+  if((hit.kind==='tree'||hit.kind==='mine') && army.some(u=>u.type==='peasant')){
+    orderGather(hit.obj); showMarker(hit.obj.x,hit.obj.z,0xffd23f); return;
+  }
+  // return resources if clicked own hall with carriers
+  if(hit.kind==='building'&&hit.obj.team==='blue'&&hit.obj.kind==='hall'){ orderReturn(hit.obj); showMarker(gp.x,gp.z,0x51ff51); return; }
+  orderMove(gp.x,gp.z); showMarker(gp.x,gp.z,0x51ff51);
+}
+function orderMove(x,z){
+  const army=myArmy();
+  army.forEach((u,i)=>{ const a=(i/army.length)*Math.PI*2;
+    u.tx=clamp(x+Math.cos(a)*(army.length>1?1.6:0),-HALF+2,HALF-2);
+    u.tz=clamp(z+Math.sin(a)*(army.length>1?1.6:0),-HALF+2,HALF-2);
+    u.state='move'; u.target=null; u.gatherTarget=null; });
+  sfx('click');
+}
+function orderAttack(target){
+  for(const u of myArmy()){ u.target=target; u.state='attack'; u.gatherTarget=null; }
+  toast('⚔️ Attack!'); sfx('sword');
+}
+function orderAttackMove(x,z){
+  for(const u of myArmy()){ u.tx=x; u.tz=z; u.state='amove'; u.target=null; }
+  showMarker(x,z); toast('Attack-move!'); sfx('sword');
+}
+function orderGather(res){
+  let n=0;
+  for(const u of myArmy()){ if(u.type!=='peasant') continue;
+    u.gatherTarget=res; u.state='gather'; u.target=null; u.carry=0; n++; }
+  if(n) { toast(n+' peasant(s) gathering'); sfx('click'); } else toast('Only peasants can gather!');
+}
+function orderReturn(hall){
+  for(const u of myArmy()){ if(u.type!=='peasant') continue; u.state='return'; u.gatherTarget=hall; u.target=null; }
+}
+
+// ============ build / train ============
+const COSTS = {
+  peasant:{g:75,w:0,f:1,t:7}, footman:{g:150,w:20,f:2,t:11}, archer:{g:120,w:45,f:2,t:11},
+  farm:{g:100,w:60,f:0,t:12}, barracks:{g:200,w:150,f:0,t:22}, tower:{g:150,w:100,f:0,t:16},
+};
+function canAfford(c){ return G.gold>=c.g&&G.wood>=c.w&&(c.f===0||foodCap()-G.foodUsed>=c.f); }
+function train(type, hall){
+  const c=COSTS[type];
+  if(hall.queue.length>=5){ toast('Queue is full!'); return; }
+  if(!canAfford(c)){ toast('Not enough resources!'); sfx('die'); return; }
+  G.gold-=c.g; G.wood-=c.w; G.foodUsed+=c.f;
+  hall.queue.push(type); sfx('train'); refreshPanel();
+}
+function startPlacing(kind){
+  placing=kind; toast('Click ground to place '+kind+' (right-click/Esc to cancel)');
+  refreshPanel();
+}
+function tryPlace(kind,x,z){
+  const c=COSTS[kind];
+  if(!canAfford(c)){ toast('Not enough resources!'); placing=null; refreshPanel(); return; }
+  x=clamp(x,-HALF+4,HALF-4); z=clamp(z,-HALF+4,HALF-4);
+  for(const b of G.buildings){ if(b.dead) continue;
+    if(Math.hypot(b.x-x,b.z-z)<(b.size+ (kind==='farm'?3.4:kind==='tower'?2.6:5))/2+0.5){ toast('Too close to another building!'); return; } }
+  G.gold-=c.g; G.wood-=c.w;
+  const b=makeBuilding(kind,x,z,'blue'); b.built=false; b.buildP=0;
+  placing=null; sfx('build'); toast('🚧 Building '+kind+'...'); refreshPanel();
+}
+
+// ============ UI panel ============
+function refreshPanel(){
+  const card=$('cmd-card'); card.innerHTML='';
+  const sel=[...G.selected].filter(o=>(o.isUnit&&o.alive)||(o.isBuilding&&!o.dead));
+  const btn=(label,sub,fn,dis=false,act=false)=>{ const b=document.createElement('button'); b.className='cmd'+(act?' active':'');
+    b.innerHTML=label+'<small>'+sub+'</small>'; b.disabled=dis; b.onclick=e=>{e.stopPropagation();fn();}; card.appendChild(b); };
+  const units=sel.filter(o=>o.isUnit), blds=sel.filter(o=>o.isBuilding);
+  // portraits
+  if(!sel.length){ $('sel-portrait').innerHTML='<div class="big">🛡️</div><div class="nm">No selection</div><div class="hp"></div><div id="queue"></div>';
+    $('sel-list').innerHTML='Select peasants to gather 🪙 gold (yellow crystals, east) and 🪵 wood (trees). Train an army, build towers &amp; barracks, and raze the Orc base!<br><br>Tip: select Town Hall → train 3 peasants → right-click gold mine.';
+  } else if(sel.length===1){
+    const o=sel[0];
+    const q = o.queue? '<div id="queue">'+o.queue.map(q=>'<span class="qitem">'+q+'</span>').join('')+(o.trainT>0?' ⏳'+o.trainT.toFixed(0)+'s':'')+'</div>':'<div id="queue"></div>';
+    if(o.isUnit) $('sel-portrait').innerHTML='<div class="big">'+o.icon+'</div><div class="nm">'+o.name+'</div><div class="hp">❤️ '+Math.ceil(o.hp)+'/'+o.maxHp+(o.carry?'<br>📦 '+o.carry+' '+o.carryType:'')+'</div>'+q;
+    else $('sel-portrait').innerHTML='<div class="big">'+({hall:'🏰',barracks:'⚔️',farm:'🌾',tower:'🗼'}[o.kind]||'🏠')+'</div><div class="nm">'+o.name+'</div><div class="hp">❤️ '+Math.ceil(o.hp)+'/'+o.maxHp+(o.built?'':'<br>🚧 '+Math.floor(o.buildP*100)+'%')+'</div>'+q;
+    $('sel-list').innerHTML=describe(sel[0]);
+  } else {
+    $('sel-portrait').innerHTML='<div class="big">👥</div><div class="nm">'+sel.length+' selected</div><div class="hp"></div><div id="queue"></div>';
+    $('sel-list').innerHTML=sel.slice(0,12).map(o=>'<div>'+(o.icon||'🏠')+' '+(o.name||o.kind)+' — '+Math.ceil(o.hp||0)+'hp</div>').join('');
+  }
+  // commands
+  if(blds.length===1 && blds[0].team==='blue'){
+    const b=blds[0];
+    if(b.kind==='hall'&&b.built){
+      btn('🧑‍🌾 Train<br>Peasant','🪙75 • 7s',()=>train('peasant',b), !canAfford(COSTS.peasant));
+      btn('🏠 Rally','set gather point',()=>toast('New units will go to selected army — just select them!'));
+      btn('🚜 Build Farm','🪙100 🪵60',()=>startPlacing('farm'),!canAfford(COSTS.farm),placing==='farm');
+    }
+    if(b.kind==='barracks'&&b.built){
+      btn('🛡️ Train Footman','🪙150 🪵20',()=>train('footman',b),!canAfford(COSTS.footman));
+      btn('🏹 Train Archer','🪙120 🪵45',()=>train('archer',b),!canAfford(COSTS.archer));
+    }
+  }
+  if(units.length && units.every(u=>u.type==='peasant')){
+    btn('🌾 Build Farm','+10 🍖',()=>startPlacing('farm'),!canAfford(COSTS.farm),placing==='farm');
+    btn('⚔️ Build Barracks','🪙200 🪵150',()=>startPlacing('barracks'),!canAfford(COSTS.barracks),placing==='barracks');
+    btn('🗼 Build Tower','🪙150 🪵100',()=>startPlacing('tower'),!canAfford(COSTS.tower),placing==='tower');
+  }
+  if(units.length){
+    btn('⚔️ Attack-move','<kbd>A</kbd>',()=>{attackMove=true;toast('Attack-move: click a destination');refreshPanel();},false,attackMove);
+    btn('✋ Stop','<kbd>S</kbd>',()=>{for(const u of units){u.state='idle';u.target=null;} sfx('click');});
+    btn('🛑 Hold','<kbd>H</kbd>',()=>{for(const u of units){u.state='hold';u.target=null;} toast('Holding position');});
+  }
+  if(!card.children.length){
+    btn('⚔️ Select Army','double duty',()=>{ G.selected.clear(); for(const u of G.units) if(u.alive&&u.team==='blue'&&(u.type==='footman'||u.type==='archer'||u.type==='grunt')) G.selected.add(u); refreshPanel(); });
+    btn('🚜 Select Peasants','workers',()=>{ G.selected.clear(); for(const u of G.units) if(u.alive&&u.team==='blue'&&u.type==='peasant') G.selected.add(u); refreshPanel(); });
+    btn('🏰 Select Hall','town',()=>{ const h=G.buildings.find(b=>b.team==='blue'&&b.kind==='hall'&&!b.dead); if(h){G.selected.clear();G.selected.add(h);refreshPanel();} });
+  }
+  updateRes();
+}
+function describe(o){
+  if(o.isBuilding){
+    if(o.kind==='hall') return '<b>'+o.name+'</b><br>Trains Peasants. Drop-off for gold & wood.<br>Queue: '+(o.queue.join(', ')||'empty');
+    if(o.kind==='barracks') return '<b>Barracks</b><br>Trains Footmen (tanky melee) and Archers (ranged).';
+    if(o.kind==='farm') return '<b>Farm</b><br>+10 food supply. Protect these!';
+    if(o.kind==='tower') return '<b>Guard Tower</b><br>Long-range arrows. Great vs waves.';
+  }
+  if(o.type==='peasant') return '<b>Peasant</b><br>Gathers gold & wood. Can construct Farms, Barracks, Towers.<br>Right-click a gold mine or tree, they return to Hall automatically.';
+  if(o.type==='footman') return '<b>Footman</b><br>Tanky melee. Hold the line!';
+  if(o.type==='archer') return '<b>Archer</b><br>Fragile but long range. Keep behind footmen.';
+  if(o.type==='grunt') return '<b>Orc Grunt</b><br>Enemy brute. Kill it!';
+  return o.name;
+}
+function updateRes(){
+  $('r-gold').textContent=Math.floor(G.gold); $('r-wood').textContent=Math.floor(G.wood);
+  $('r-food').textContent=G.foodUsed+'/'+foodCap(); $('r-kills').textContent=G.kills;
+  $('wave-timer').textContent=Math.ceil(G.waveIn);
+}
+
+// keyboard
+addEventListener('keydown', e=>{
+  if(e.key==='a'||e.key==='A'){ attackMove=true; toast('Attack-move: click destination'); refreshPanel(); }
+  if(e.key==='s'||e.key==='S'){ for(const u of myArmy()){u.state='idle';u.target=null;} }
+  if(e.key==='h'||e.key==='H'){ for(const u of myArmy()){u.state='hold';} toast('Holding'); }
+  if(e.key==='Escape'){ placing=null; attackMove=false; G.selected.clear(); refreshPanel(); }
+  const sp=6;
+  if(e.key==='w'||e.key==='W'||e.key==='ArrowUp') camTarget.z-=sp;
+  if(e.key==='x'||e.key==='S'&&false) {}
+  if(e.key==='s'&&false) {}
+  if(e.key==='ArrowDown'||(e.key==='s'&&e.ctrlKey)) {}
+  updateCameraKeys(e);
+});
+function updateCameraKeys(e){
+  const sp=5;
+  if(e.key==='s'&&!e.ctrlKey&&!e.metaKey){ /* s is stop, don't pan */ }
+  else if(e.key==='ArrowDown') camTarget.z+=sp;
+  if(e.key==='a'&&false) {}
+  camTarget.x=clamp(camTarget.x,-HALF,HALF); camTarget.z=clamp(camTarget.z,-HALF,HALF); updateCamera();
+}
+// continuous keys
+const keys={};
+addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+
+// ============ combat / sim ============
+function nearestEnemy(u, range=30){
+  let best=null,bd=range;
+  const pool = u.team==='blue' ? [...G.units.filter(v=>v.alive&&v.team==='red'), ...G.buildings.filter(b=>!b.dead&&b.team==='red')]
+    : [...G.units.filter(v=>v.alive&&v.team==='blue'), ...G.buildings.filter(b=>!b.dead&&b.team==='blue')];
+  for(const e of pool){ const d=Math.hypot((e.x??e.mesh.position.x)-u.x,(e.z??e.mesh.position.z)-u.z);
+    if(d<bd){bd=d;best=e;} }
+  return best;
+}
+function damage(target, amt, by){
+  if(target.isUnit){ if(!target.alive) return; target.hp-=amt;
+    if(target.hp<=0){ target.alive=false; scene.remove(target.mesh); scene.remove(target.bar);
+      G.selected.delete(target); if(target.team==='blue') G.foodUsed=Math.max(0,G.foodUsed-target.food);
+      if(by&&by.team==='blue'&&(target.team==='red')){ G.kills++; G.gold+=25; }
+      sfx('die'); puff(target.x,target.z, target.team==='blue'?0x2b5fd9:0xc23b2a);
+    }
+  } else if(target.isBuilding){ if(target.dead) return; target.hp-=amt;
+    if(target.hp<=0){ target.dead=true; target.alive=false; scene.remove(target.mesh); scene.remove(target.bar);
+      G.selected.delete(target); sfx('boom'); puff(target.x,target.z,0xff8800,3);
+      toast('💥 '+(target.name||target.kind)+' destroyed!');
+      checkEnd();
+    }
+  } else if(target.isTree){ target.wood-=amt; if(target.wood<=0){ target.alive=false; scene.remove(target.mesh); } }
+  else if(target.isMine){ target.gold-=amt; if(target.gold<=0){ target.alive=false; scene.remove(target.mesh); toast('Gold mine exhausted!'); } }
+}
+function puff(x,z,color,n=8){
+  for(let i=0;i<n;i++){ const m=new THREE.Mesh(new THREE.SphereGeometry(.3,6,5),
+    new THREE.MeshBasicMaterial({color,transparent:true,opacity:.9}));
+    m.position.set(x+(Math.random()-.5)*2,1+Math.random(),z+(Math.random()-.5)*2);
+    scene.add(m); G.effects.push({m,t:0.6,vx:(Math.random()-.5)*6,vy:4+Math.random()*3,vz:(Math.random()-.5)*6}); }
+}
+function shoot(from, target, dmg, color=0xffe27a){
+  const a=new THREE.Mesh(new THREE.SphereGeometry(.16,6,5),new THREE.MeshBasicMaterial({color}));
+  a.position.set(from.x,2.2,from.z); scene.add(a);
+  G.projectiles.push({m:a, from:{x:from.x,z:from.z}, target, dmg, t:0, team:from.team});
+  sfx('bow');
+}
+function stepUnit(u, dt){
+  if(!u.alive) return;
+  const pos=u.mesh.position;
+  // separation
+  let sx=0,sz=0;
+  for(const v of G.units){ if(v===u||!v.alive) continue;
+    const d=Math.hypot(v.x-u.x,v.z-u.z); if(d<1.4&&d>0.01){ sx+=(u.x-v.x)/d; sz+=(u.z-v.z)/d; } }
+  const moveToward=(tx,tz,sp)=>{
+    const d=Math.hypot(tx-u.x,tz-u.z); if(d<0.4) return true;
+    const vx=(tx-u.x)/d*sp+sx*2, vz=(tz-u.z)/d*sp+sz*2;
+    u.x=clamp(u.x+vx*dt,-HALF+1,HALF-1); u.z=clamp(u.z+vz*dt,-HALF+1,HALF-1);
+    pos.set(u.x,0,u.z); u.mesh.rotation.y=Math.atan2(vx,vz);
+    u.walkPh+=dt*10; u.mesh.position.y=Math.abs(Math.sin(u.walkPh))*.12;
+    u.mesh.rotation.z=Math.sin(u.walkPh)*0.03;
+    return false;
+  };
+  const tryAttack=(t)=>{
+    if(!t || (t.isUnit&&!t.alive)||(t.isBuilding&&t.dead)||(t.isTree&&!t.alive)) return false;
+    const tx=t.x??t.mesh?.position.x??u.tx, tz=t.z??t.mesh?.position.z??u.tz;
+    const d=Math.hypot(tx-u.x,tz-u.z);
+    if(d<=u.range+ (t.radius||0)){ u.mesh.rotation.y=Math.atan2(tx-u.x,tz-u.z);
+      u.atkT-=dt;
+      if(u.atkT<=0){ u.atkT = u.type==='archer'?1.1:0.9;
+        if(u.type==='archer'||u.team==='blue'&&false) {}
+        if(u.range>3){ shoot(u,t,u.dmg); }
+        else { damage(t,u.dmg,u); sfx('sword'); puff(tx,tz,0xffffff,2);
+          const w=u.mesh.userData.weapon; if(w){ w.rotation.x=-0.6; setTimeout(()=>w&&(w.rotation.x=0),120); } }
+      }
+      return true;
+    } else { moveToward(tx,tz,u.speed); return true; }
+  };
+  if(u.state==='hold'){ const e=nearestEnemy(u, u.range+6); if(e) tryAttack(e); return; }
+  if(u.state==='attack'){ if(!tryAttack(u.target)){ u.state='idle'; u.target=null; } return; }
+  if(u.state==='amove'){ const e=nearestEnemy(u, 12); if(e){ tryAttack(e); return; }
+    if(moveToward(u.tx,u.tz,u.speed)) u.state='idle'; return; }
+  if(u.state==='move'){ const e = u.team==='red'? nearestEnemy(u, 6):null; if(e&&u.team==='red'){u.target=e;u.state='attack';return;}
+    if(moveToward(u.tx,u.tz,u.speed)) u.state='idle'; return; }
+  if(u.state==='gather'){
+    const r=u.gatherTarget;
+    if(!r||(r.isTree&&(!r.alive||r.wood<=0))||(r.isMine&&(!r.alive||r.gold<=0))){
+      // find another nearby resource or return
+      if(u.carry>0){ u.state='return'; } else { u.state='idle'; }
+      return;
+    }
+    const d=Math.hypot(r.x-u.x,r.z-u.z);
+    if(u.carry>=10){ u.state='return'; return; }
+    if(d > (r.radius||1.5)+1.2){ moveToward(r.x,r.z,u.speed); }
+    else { u.mesh.rotation.y=Math.atan2(r.x-u.x,r.z-u.z); u.gatherT+=dt;
+      if(u.gatherT>0.9){ u.gatherT=0; u.carry+=2;
+        u.carryType = r.isMine?'gold':'wood';
+        if(r.isMine){ r.gold-=2; if(Math.random()<.4) sfx('gold'); } else { r.wood-=2; if(Math.random()<.3) sfx('build'); }
+        puff(u.x,u.z, r.isMine?0xffd23f:0x8a5a2a,1);
+        if(r.isMine&&r.gold<=0){r.alive=false;scene.remove(r.mesh);toast('Gold mine exhausted!');}
+        if(r.isTree&&r.wood<=0){r.alive=false;scene.remove(r.mesh);}
+        if(u.carry>=10) u.state='return';
+      }
+    }
+    return;
+  }
+  if(u.state==='return'){
+    // find nearest hall
+    let hall=G.buildings.find(b=>b.team===u.team&&b.kind==='hall'&&!b.dead);
+    if(!hall){ u.state='idle'; return; }
+    const d=Math.hypot(hall.x-u.x,hall.z-u.z);
+    if(d>hall.size){ moveToward(hall.x,hall.z,u.speed); }
+    else { if(u.carry>0){ if(u.carryType==='gold'){G.gold+=u.carry;sfx('gold');} else {G.wood+=u.carry;} u.carry=0; }
+      // go back
+      if(u.gatherTarget&&u.gatherTarget.isBuilding){ u.state='idle'; }
+      else if(u.gatherTarget&&(u.gatherTarget.isMine||u.gatherTarget.isTree)){
+        // if depleted find new
+        u.state='gather';
+      } else {
+        // auto-find nearest resource
+        let best=null,bd=1e9;
+        for(const m of G.mines){ if(!m.alive||m.gold<=0) continue; const dd=Math.hypot(m.x-hall.x,m.z-hall.z); if(dd<bd){bd=dd;best=m;} }
+        // prefer gold, else tree
+        if(!best){ for(const t of G.trees){ if(!t.alive||t.wood<=0) continue; const dd=Math.hypot(t.x-u.x,t.z-u.z); if(dd<bd){bd=dd;best=t;} } }
+        if(best){ u.gatherTarget=best; u.state='gather'; } else u.state='idle';
+      }
+    }
+    return;
+  }
+  // idle: auto-acquire (soldiers only)
+  if(u.team==='blue'&&(u.type==='footman'||u.type==='archer')){
+    const e=nearestEnemy(u,9); if(e){u.target=e;u.state='attack';}
+  }
+  if(u.team==='red'&&(u.type==='grunt')){
+    const e=nearestEnemy(u,14); if(e){u.target=e;u.state='attack';}
+  }
+}
+function stepBuilding(b, dt){
+  if(b.dead) return;
+  if(!b.built){ b.buildP+=dt/COSTS[b.kind].t;
+    b.mesh.scale.setScalar(0.3+0.7*clamp(b.buildP,0,1));
+    if(b.buildP>=1){ b.built=true; b.mesh.scale.setScalar(1); toast('✅ '+b.name+' ready!'); sfx('build'); refreshPanel(); }
+    return;
+  }
+  // training
+  if(b.queue.length){
+    b.trainT+=dt;
+    const need=COSTS[b.queue[0]].t;
+    if(b.trainT>=need){ b.trainT=0; const type=b.queue.shift();
+      // rally near building
+      const u=spawnUnit(type, b.x+(Math.random()-.5)*4, b.z+4, b.team);
+      u.state='move'; u.tx=b.x+(Math.random()-.5)*6; u.tz=b.z+6;
+      toast(u.name+' ready!'); sfx('train');
+      if(b.team==='red'){ u.state='attack'; u.target=nearestEnemy(u,999); }
+      refreshPanel();
+    }
+  } else b.trainT=0;
+  // tower defense
+  if(b.kind==='tower'&&b.built){
+    b.cd-=dt;
+    if(b.cd<=0){ const dummy={x:b.x,z:b.z,team:b.team};
+      const e=nearestEnemy(dummy,22);
+      if(e){ b.cd=1.2; shoot({x:b.x,z:b.z,team:b.team},e,22,0xff8855); } }
+  }
+}
+function stepAI(dt){
+  G.waveIn-=dt;
+  if(G.waveIn<=0){
+    G.waveNum++; G.waveIn=75;
+    const n=2+G.waveNum;
+    const hall=G.buildings.find(b=>b.team==='red'&&b.kind==='hall'&&!b.dead);
+    for(let i=0;i<n;i++){ const g=spawnUnit('grunt', (hall?hall.x:24)+(Math.random()-.5)*6,(hall?hall.z:24)+(Math.random()-.5)*6,'red');
+      const target=G.buildings.find(b=>b.team==='blue'&&!b.dead); g.target=target||null; g.state='attack'; }
+    toast('🐗 Orc wave '+G.waveNum+' incoming! ('+n+' grunts)');
+    sfx('boom');
+  }
+  // enemy trickle + occasional peon
+  if(Math.random()<dt*0.05){ const h=G.buildings.find(b=>b.team==='red'&&b.kind==='hall'&&!b.dead);
+    if(h&&h.queue.length<2){ h.queue.push('grunt'); } }
+}
+function checkEnd(){
+  if(G.over) return;
+  const myHall=G.buildings.find(b=>b.team==='blue'&&b.kind==='hall');
+  const orcHall=G.buildings.find(b=>b.team==='red'&&b.kind==='hall');
+  if(orcHall&&orcHall.dead){ endGame(true); }
+  else if(myHall&&myHall.dead){ endGame(false); }
+}
+function endGame(win){
+  G.over=true;
+  $('end-title').textContent=win?'🏆 VICTORY!':'💀 DEFEAT';
+  $('end-title').style.color=win?'#ffd76a':'#ff7b7b';
+  $('end-sub').textContent=win?('You razed the Orc Stronghold in '+Math.floor(G.time)+'s with '+G.kills+' kills!'):'Your Town Hall has fallen. The orcs prevail...';
+  $('end-screen').classList.add('show');
+  sfx(win?'train':'boom');
+}
+$('restart-btn').onclick=()=>location.reload();
+$('start-btn').onclick=()=>{ $('overlay').classList.add('hidden'); G.started=true; sfx('train'); toast('⚔️ For the Alliance! Destroy the Orc Stronghold!'); };
+
+// ============ minimap ============
+const mm=$('minimap').getContext('2d');
+function drawMinimap(){
+  mm.fillStyle='#1d3a1e'; mm.fillRect(0,0,152,152);
+  mm.fillStyle='#2f6fb5'; mm.beginPath(); mm.arc((-30+HALF)/MAP*152,(28+HALF)/MAP*152,13/MAP*152,0,7); mm.fill();
+  const dot=(x,z,c,s=3)=>{ mm.fillStyle=c; mm.fillRect((x+HALF)/MAP*152-s/2,(z+HALF)/MAP*152-s/2,s,s); };
+  for(const t of G.trees) if(t.alive) dot(t.x,t.z,'#2e7d32',2);
+  for(const m of G.mines) if(m.alive) dot(m.x,m.z,'#ffd23f',4);
+  for(const b of G.buildings){ if(b.dead) continue; dot(b.x,b.z,b.team==='blue'?'#4da3ff':'#ff4d4d',6); }
+  for(const u of G.units){ if(!u.alive) continue; dot(u.x,u.z,u.team==='blue'?'#9fd0ff':'#ffb0a0',2); }
+  // viewport
+  mm.strokeStyle='#fff'; mm.strokeRect((camTarget.x+HALF-20)/MAP*152,(camTarget.z+HALF-20)/MAP*152,40/MAP*152,40/MAP*152);
+}
+$('minimap').parentElement.onclick=e=>{
+  const r=$('minimap').getBoundingClientRect();
+  camTarget.x=((e.clientX-r.left)/r.width)*MAP-HALF; camTarget.z=((e.clientY-r.top)/r.height)*MAP-HALF;
+  camTarget.x=clamp(camTarget.x,-HALF,HALF); camTarget.z=clamp(camTarget.z,-HALF,HALF); updateCamera();
+};
+
+// ============ selection rings ============
+const rings=new Map();
+function updateRings(){
+  for(const [u,m] of rings){ if(!G.selected.has(u)){ scene.remove(m); rings.delete(u); } }
+  for(const o of G.selected){
+    if(!rings.has(o)){ const m=new THREE.Mesh(ringGeo, o.team==='blue'?ringMat:new THREE.MeshBasicMaterial({color:0xff4444,transparent:true,opacity:.9,depthWrite:false}));
+      m.position.y=.12; scene.add(m); rings.set(o,m); }
+    const m=rings.get(o); const p=o.isUnit? o.mesh.position : o.mesh.position;
+    const s=(o.radius||1)+0.4; m.scale.set(s,s,s); m.position.set(p.x,.12,p.z);
+  }
+}
+
+// ============ main loop ============
+const clock=new THREE.Clock();
+let fpsA=0,fpsN=0,fpsT=0;
+refreshPanel();
+toast('Welcome to Warcraft 3D! Press START BATTLE.');
+function loop(){
+  requestAnimationFrame(loop);
+  const dt=Math.min(clock.getDelta(),0.05);
+  if(!G.over){ G.time+=dt;
+    // camera keys
+    const sp=24*dt;
+    if(keys['w']) camTarget.z-=sp; if(keys['s']&&!myArmy().length) camTarget.z+=sp;
+    if(keys['a']&&!attackMove&&!myArmy().length) camTarget.x-=sp;
+    if(keys['d']) camTarget.x+=sp;
+    if(keys['q']) { camYaw-=1.4*dt; } if(keys['e']) { camYaw+=1.4*dt; }
+    // edge pan
+    // (skip on touch)
+    camTarget.x=clamp(camTarget.x,-HALF,HALF); camTarget.z=clamp(camTarget.z,-HALF,HALF);
+    updateCamera();
+    if(G.started){
+      stepAI(dt);
+      for(const u of [...G.units]) stepUnit(u,dt);
+      for(const b of G.buildings) stepBuilding(b,dt);
+      // projectiles
+      for(let i=G.projectiles.length-1;i>=0;i--){ const p=G.projectiles[i];
+        const t=p.target; const alive=t&&(t.isUnit?t.alive:!t.dead);
+        if(!alive){ scene.remove(p.m); G.projectiles.splice(i,1); continue; }
+        const tx=t.x??t.mesh.position.x, tz=t.z??t.mesh.position.z;
+        const dx=tx-p.m.position.x, dz=tz-p.m.position.z, d=Math.hypot(dx,dz);
+        const spd=26;
+        if(d<1){ damage(t,p.dmg,{team:p.team}); puff(tx,tz,0xffd23f,2); scene.remove(p.m); G.projectiles.splice(i,1); }
+        else { p.m.position.x+=dx/d*spd*dt; p.m.position.z+=dz/d*spd*dt; p.m.position.y=2.2+Math.sin(p.t*10)*.3; p.t+=dt;
+          if(p.t>3){ scene.remove(p.m); G.projectiles.splice(i,1); } }
+      }
+      // effects
+      for(let i=G.effects.length-1;i>=0;i--){ const e=G.effects[i]; e.t-=dt;
+        e.m.position.x+=e.vx*dt; e.m.position.y+=e.vy*dt; e.m.position.z+=e.vz*dt;
+        e.m.material.opacity=Math.max(0,e.t*1.5);
+        if(e.t<=0){ scene.remove(e.m); G.effects.splice(i,1); } }
+      // bars
+      for(const u of G.units){ if(!u.alive) continue; u.bar.position.set(u.x,3.1,u.z); setBar(u.bar,u.hp/u.maxHp,true); u.bar.quaternion.copy(camera.quaternion); }
+      for(const b of G.buildings){ if(b.dead) continue; b.bar.position.set(b.x,(b.kind==='hall'?7:6),b.z); setBar(b.bar,b.hp/b.maxHp,b.team==='blue'); b.bar.quaternion.copy(camera.quaternion); }
+      updateRings();
+      if(markerT>0){ markerT-=dt; targetMarker.scale.setScalar(1+ (0.8-markerT)); if(markerT<=0) targetMarker.visible=false; }
+      if(Math.floor(G.time*4)%4===0) { updateRes(); drawMinimap(); if(Math.random()<.1) refreshPanel(); }
+      else { updateRes(); }
+      // passive trickle to keep game moving
+      G.gold+=dt*0.4;
+    }
+  }
+  // fps
+  fpsA+=dt; fpsN++; fpsT+=dt; if(fpsT>0.5){ $('fps').textContent=Math.round(fpsN/fpsA)+' fps • '+G.units.filter(u=>u.alive).length+' units'; fpsA=0;fpsN=0;fpsT=0; }
+  renderer.render(scene,camera);
+}
+loop();
+setInterval(()=>{ if(G.started&&!G.over){ drawMinimap(); } },300);
+drawMinimap();
+// expose for automated checks
+window.__game = G;
+</script>
+</body>
+</html>
