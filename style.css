@@ -1,0 +1,54 @@
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#070d1f;font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;color:#fff;-webkit-user-select:none;user-select:none}
+#app{position:fixed;inset:0}
+#scene{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hidden{display:none!important}
+
+/* HUD */
+#hud{position:absolute;inset:0;pointer-events:none;z-index:5}
+#scoreboard{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;align-items:stretch;gap:0;border-radius:14px;overflow:hidden;background:rgba(5,12,28,.72);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(8px);box-shadow:0 8px 30px rgba(0,0,0,.5)}
+.team{display:flex;align-items:center;gap:10px;padding:8px 18px;font-weight:800;font-size:22px;letter-spacing:1px}
+.team.blue{background:linear-gradient(135deg,#1565ff,#00c6ff)}
+.team.orange{background:linear-gradient(135deg,#ff7a00,#ffb300);flex-direction:row}
+.team .tname{font-size:12px;opacity:.9;letter-spacing:2px}
+#timer{display:flex;align-items:center;padding:8px 20px;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;background:rgba(0,0,0,.45)}
+#speedo{position:absolute;right:18px;bottom:86px;background:rgba(5,12,28,.65);border:1px solid rgba(255,255,255,.15);padding:6px 14px;border-radius:12px;font-size:26px;font-weight:800}
+#speedo small{font-size:11px;opacity:.7;margin-left:4px}
+#boost-wrap{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);width:min(420px,60vw)}
+#boost-label{font-size:12px;letter-spacing:2px;font-weight:700;opacity:.9;margin-bottom:6px;text-align:center;text-shadow:0 2px 8px #000}
+#boost-bar{height:16px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);overflow:hidden}
+#boost-fill{height:100%;width:100%;border-radius:999px;background:linear-gradient(90deg,#ffde00,#ff7a00,#ff2d00);transition:width .12s linear;box-shadow:0 0 18px #ff9a00}
+#ballcam{position:absolute;left:18px;bottom:18px;font-size:11px;letter-spacing:1.5px;background:rgba(0,0,0,.5);padding:6px 10px;border-radius:8px;border:1px solid rgba(0,255,200,.4)}
+
+#center-msg{position:absolute;top:22%;left:50%;transform:translate(-50%,-50%);font-size:clamp(28px,5vw,56px);font-weight:900;letter-spacing:2px;text-shadow:0 4px 30px rgba(0,0,0,.8);z-index:6;text-align:center}
+#countdown{position:absolute;top:38%;left:50%;transform:translate(-50%,-50%);font-size:110px;font-weight:900;color:#ffde00;text-shadow:0 0 40px #ff7a00,0 6px 0 #000;z-index:6}
+#goal-banner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:7;pointer-events:none;background:radial-gradient(circle,rgba(255,220,0,.25),transparent 60%)}
+#goal-banner span{font-size:clamp(60px,12vw,140px);font-weight:900;font-style:italic;background:linear-gradient(#fff,#ffde00,#ff7a00);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 6px 0 #000) drop-shadow(0 0 30px #ff9a00);animation:pop .5s ease}
+#goal-banner small{font-size:20px;letter-spacing:3px;font-weight:800}
+@keyframes pop{0%{transform:scale(.3) rotate(-6deg)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+
+/* Menus */
+#menu,#endscreen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:10;background:radial-gradient(ellipse at center,rgba(10,30,80,.55),rgba(2,6,18,.88));backdrop-filter:blur(4px);padding:16px}
+.menu-card{max-width:520px;width:100%;text-align:center;background:linear-gradient(180deg,rgba(20,35,75,.95),rgba(8,14,34,.97));border:1px solid rgba(0,198,255,.35);border-radius:22px;padding:28px 28px 24px;box-shadow:0 20px 80px rgba(0,150,255,.25)}
+.badge{display:inline-block;font-size:12px;letter-spacing:3px;font-weight:800;background:#ffde00;color:#111;padding:6px 14px;border-radius:999px;margin-bottom:12px}
+.menu-card h1{font-size:52px;line-height:.95;font-weight:900;font-style:italic;letter-spacing:1px}
+.menu-card h1 span{background:linear-gradient(90deg,#00c6ff,#7affff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.menu-card h2{font-size:44px;font-weight:900;font-style:italic;margin:8px 0}
+.sub{opacity:.8;margin:8px 0 16px}
+.controls-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 18px;text-align:left}
+.controls-grid div{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.controls-grid b{color:#ffde00;font-size:14px}
+.controls-grid span{font-size:12px;opacity:.75}
+#play-btn,#again-btn{width:100%;padding:15px;font-size:20px;font-weight:900;letter-spacing:2px;border:none;border-radius:14px;cursor:pointer;color:#06121f;background:linear-gradient(90deg,#00e676,#00c6ff);box-shadow:0 8px 30px rgba(0,230,118,.4);transition:transform .1s}
+#play-btn:hover,#again-btn:hover{transform:scale(1.02)}
+.tip{font-size:12px;opacity:.65;margin-top:12px}
+
+/* Touch */
+#touch{position:absolute;inset:auto 0 0 0;display:flex;justify-content:space-between;align-items:flex-end;padding:0 18px 90px;z-index:8;pointer-events:none}
+#stick{width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.25);position:relative;pointer-events:auto;touch-action:none}
+#stick-knob{position:absolute;left:50%;top:50%;width:56px;height:56px;border-radius:50%;background:rgba(0,198,255,.8);transform:translate(-50%,-50%);box-shadow:0 0 20px #00c6ff}
+#touch-btns{display:flex;gap:12px;pointer-events:auto}
+#touch-btns button{width:84px;height:84px;border-radius:50%;border:2px solid rgba(255,255,255,.3);font-weight:900;font-size:13px;color:#fff;background:rgba(255,122,0,.75)}
+#btn-jump{background:rgba(0,198,255,.7)!important}
+#err{position:absolute;left:12px;top:12px;max-width:420px;background:#b00020;padding:10px 14px;border-radius:10px;z-index:99;font-size:13px}
+@media(max-width:640px){.menu-card h1{font-size:38px}.controls-grid{grid-template-columns:1fr}#speedo{display:none}}

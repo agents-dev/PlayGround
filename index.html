@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Turbo Ball Arena — Rocket League Clone</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>" />
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://unpkg.com" />
+</head>
+<body>
+<div id="app">
+  <canvas id="scene"></canvas>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div id="scoreboard">
+      <div class="team blue"><span class="tname">BLUE</span><span id="score-blue">0</span></div>
+      <div id="timer">3:00</div>
+      <div class="team orange"><span id="score-orange">0</span><span class="tname">ORANGE</span></div>
+    </div>
+    <div id="speedo"><span id="speed-val">0</span><small>km/h</small></div>
+    <div id="boost-wrap">
+      <div id="boost-label">BOOST <span id="boost-key">[SHIFT]</span></div>
+      <div id="boost-bar"><div id="boost-fill"></div></div>
+    </div>
+    <div id="ballcam">🎥 BALL CAM ON</div>
+  </div>
+
+  <div id="center-msg" class="hidden"></div>
+  <div id="countdown" class="hidden">3</div>
+  <div id="goal-banner" class="hidden"><span>GOAL!</span><small id="goal-sub">Blue scores</small></div>
+
+  <!-- Start menu -->
+  <div id="menu">
+    <div class="menu-card">
+      <div class="badge">⚽🚗 TURBO BALL ARENA</div>
+      <h1>ROCKET<br/><span>LEAGUE</span> CLONE</h1>
+      <p class="sub">Car soccer • 1v1 vs AI • First to 5 or 3:00 wins</p>
+      <div class="controls-grid">
+        <div><b>W A S D / Arrows</b><span>Drive &amp; steer</span></div>
+        <div><b>SPACE</b><span>Jump / double-jump flip</span></div>
+        <div><b>SHIFT</b><span>Boost (grab glowing pads)</span></div>
+        <div><b>R</b><span>Reset kickoff • <b>M</b> mute</span></div>
+      </div>
+      <button id="play-btn">KICK OFF ▶</button>
+      <p class="tip">💡 Hit the ball with your nose for power shots. Boost pads = +30. Ball-cam is always on.</p>
+    </div>
+  </div>
+
+  <!-- End screen -->
+  <div id="endscreen" class="hidden">
+    <div class="menu-card">
+      <div id="end-title" class="badge">FULL TIME</div>
+      <h2 id="end-result">BLUE WINS!</h2>
+      <p id="end-score" class="sub">3 – 2</p>
+      <button id="again-btn">PLAY AGAIN ↻</button>
+    </div>
+  </div>
+
+  <!-- Touch controls -->
+  <div id="touch" class="hidden">
+    <div id="stick"><div id="stick-knob"></div></div>
+    <div id="touch-btns">
+      <button id="btn-boost">BOOST</button>
+      <button id="btn-jump">JUMP</button>
+    </div>
+  </div>
+
+  <div id="err" class="hidden"></div>
+</div>
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module" src="game.js"></script>
+</body>
+</html>
