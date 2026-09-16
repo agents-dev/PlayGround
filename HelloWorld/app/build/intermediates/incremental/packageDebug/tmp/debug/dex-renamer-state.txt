@@ -1,0 +1,7 @@
+#Wed Sep 16 03:00:59 UTC 2026
+base.1=/home/runner/work/PlayGround/PlayGround/HelloWorld/app/build/intermediates/dex/debug/mergeProjectDexDebug/6/classes.dex
+path.1=6/classes.dex
+base.0=/home/runner/work/PlayGround/PlayGround/HelloWorld/app/build/intermediates/dex/debug/mergeProjectDexDebug/0/classes.dex
+renamed.1=classes2.dex
+renamed.0=classes.dex
+path.0=0/classes.dex
