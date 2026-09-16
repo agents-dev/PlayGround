@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hearthstone Clone — Tavern Brawl</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <div class="logo">🔥 <span>Hearthstone Clone</span> <em>Tavern Brawl vs AI</em></div>
+    <div class="top-actions">
+      <button id="btn-help" class="ghost-btn">❓ How to play</button>
+      <button id="btn-restart" class="ghost-btn">↻ Restart</button>
+      <div id="deck-counts"><span id="deck-player-count"></span> · <span id="deck-enemy-count"></span></div>
+    </div>
+  </div>
+
+  <div id="table">
+    <!-- ENEMY -->
+    <div class="side enemy-side">
+      <div class="hero-row">
+        <div class="hero-card" id="enemy-hero">
+          <div class="hero-portrait">🛡️</div>
+          <div class="hero-info">
+            <div class="hero-name">Garrosh <span class="hero-class">Warrior · AI</span></div>
+            <div class="hero-hp"><span id="enemy-hp">30</span><span id="enemy-armor" class="armor hidden">🛡0</span></div>
+          </div>
+          <button class="hero-power" id="enemy-power" disabled title="Armor Up! (2): Gain 2 Armor">🛡️<span>2</span></button>
+        </div>
+        <div class="side-stats">
+          <div class="mana enemy-mana" id="enemy-mana"></div>
+          <div class="hand-count" id="enemy-hand-count"></div>
+        </div>
+      </div>
+      <div class="hand enemy-hand" id="enemy-hand"></div>
+      <div class="board" id="enemy-board"></div>
+    </div>
+
+    <div id="midbar">
+      <div id="turn-banner" class="hidden"></div>
+      <div id="status-line">Your turn — drag your brain, not your cards. Click a card, then a target.</div>
+      <button id="btn-end-turn">END TURN</button>
+    </div>
+
+    <!-- PLAYER -->
+    <div class="side player-side">
+      <div class="board" id="player-board"></div>
+      <div class="hero-row">
+        <div class="hero-card playable-hero" id="player-hero">
+          <div class="hero-portrait mage">🔮</div>
+          <div class="hero-info">
+            <div class="hero-name">Jaina <span class="hero-class">Mage · You</span></div>
+            <div class="hero-hp"><span id="player-hp">30</span><span id="player-armor" class="armor hidden">🛡0</span></div>
+          </div>
+          <button class="hero-power" id="player-power" title="Fireblast (2): Deal 1 damage">🔥<span>2</span></button>
+        </div>
+        <div class="side-stats">
+          <div class="mana player-mana" id="player-mana"></div>
+          <div class="deck-hint" id="player-deck-hint"></div>
+        </div>
+      </div>
+      <div class="hand player-hand" id="player-hand"></div>
+    </div>
+  </div>
+
+  <aside id="log-panel">
+    <h3>📜 Combat Log</h3>
+    <div id="log"></div>
+  </aside>
+
+  <div id="target-hint" class="hidden">🎯 Choose a target… <button id="cancel-target">Cancel (Esc)</button></div>
+  <div id="gameover" class="hidden">
+    <div class="gameover-card">
+      <div id="gameover-emoji">🏆</div>
+      <h1 id="gameover-title">Victory!</h1>
+      <p id="gameover-sub"></p>
+      <button id="btn-again">⚔️ Brawl again</button>
+    </div>
+  </div>
+
+  <div id="help-modal" class="hidden">
+    <div class="help-card">
+      <h2>🍺 Welcome to the Tavern!</h2>
+      <ul>
+        <li>🩸 Reduce the enemy hero from <b>30 → 0</b> to win. Armor absorbs first.</li>
+        <li>🔷 <b>Mana:</b> +1 crystal each turn (max 10). Cards cost mana.</li>
+        <li>🃏 <b>Play:</b> click a glowing card, then a target if needed. Minions enter <i>sleeping</i> (Zzz) unless they have <b>Charge</b>.</li>
+        <li>⚔️ <b>Attack:</b> click your ready minion (green glow), then an enemy. Taunts (🛡️ frame) must be attacked first.</li>
+        <li>🔥 <b>Hero power (2 mana, once/turn):</b> click it, then pick any target.</li>
+        <li>🪙 You start with <b>The Coin</b> (+1 mana). Decks fatigue when empty!</li>
+        <li>🤖 Garrosh plays fair-ish: taunts, trades, fireballs face when lethal.</li>
+      </ul>
+      <button id="btn-close-help">Got it — to battle!</button>
+    </div>
+  </div>
+
+  <div id="fx-layer"></div>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
