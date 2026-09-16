@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>Warcraft 3D — Orcs &amp; Humans</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#0a0f0a;
+    font-family: Georgia, 'Times New Roman', serif; color:#f5e6c4;
+    -webkit-user-select:none; user-select:none; }
+  #app { position:fixed; inset:0; }
+  #scene { position:absolute; inset:0; display:block; }
+  /* Top resource bar */
+  #topbar { position:absolute; top:0; left:0; right:0; height:44px; z-index:20;
+    display:flex; align-items:center; justify-content:center; gap:18px;
+    background:linear-gradient(180deg, rgba(20,14,8,.95), rgba(40,26,12,.88));
+    border-bottom:2px solid #8a6b32; box-shadow:0 2px 12px rgba(0,0,0,.7);
+    font-size:15px; padding:0 10px; }
+  #topbar .logo { font-weight:bold; letter-spacing:2px; color:#ffd76a;
+    text-shadow:0 0 8px #7a4d00, 0 2px 0 #000; font-size:16px; white-space:nowrap; }
+  .res { display:flex; align-items:center; gap:6px; background:rgba(0,0,0,.45);
+    border:1px solid #6b5325; border-radius:6px; padding:3px 10px; white-space:nowrap; }
+  .res b { color:#ffe9a8; min-width:34px; text-align:right; font-variant-numeric:tabular-nums; }
+  .ric { width:20px; height:20px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:13px; }
+  .ric.gold { background:radial-gradient(circle at 35% 30%, #ffe98a, #d4a017 60%, #7a5b00); }
+  .ric.wood { background:linear-gradient(180deg,#8a5a2b,#5a3413); border-radius:3px; }
+  .ric.food { background:radial-gradient(circle at 50% 40%, #ffb37a, #b3541e); border-radius:4px; }
+  #waveInfo { font-size:12px; color:#ffb3b3; background:rgba(80,0,0,.5); border:1px solid #a33;
+    padding:3px 10px; border-radius:6px; white-space:nowrap; }
+  /* Bottom command panel */
+  #bottombar { position:absolute; left:0; right:0; bottom:0; z-index:20;
+    display:flex; gap:10px; align-items:stretch; justify-content:center;
+    padding:8px 10px 10px; pointer-events:none; }
+  #unitCard, #cmdCard, #helpCard { pointer-events:auto;
+    background:linear-gradient(180deg, rgba(30,22,12,.96), rgba(12,9,5,.96));
+    border:2px solid #8a6b32; border-radius:10px; box-shadow:0 4px 18px rgba(0,0,0,.7); }
+  #unitCard { width:300px; min-height:132px; padding:8px 10px; display:flex; gap:10px; }
+  #portrait { width:74px; height:74px; border-radius:8px; flex:0 0 74px;
+    display:flex; align-items:center; justify-content:center; font-size:44px;
+    background:radial-gradient(circle at 50% 30%, #3a4a6b, #141a2a 70%);
+    border:2px solid #5a6b8a; text-shadow:0 2px 4px #000; }
+  #unitInfo { flex:1; min-width:0; }
+  #unitInfo h2 { font-size:16px; color:#ffd76a; margin-bottom:2px; }
+  #unitInfo p { font-size:12px; color:#d8c49a; line-height:1.35; }
+  #hpBarWrap { height:10px; background:#300; border:1px solid #000; border-radius:5px; margin-top:6px; overflow:hidden; }
+  #hpBar { height:100%; width:100%; background:linear-gradient(90deg,#3f6,#1a5); transition:width .15s; }
+  #cmdCard { width:340px; padding:8px; }
+  #cmdCard h3 { font-size:12px; letter-spacing:1px; color:#c9a959; margin:0 0 6px 2px; }
+  #cmdGrid { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; }
+  .cmd { background:linear-gradient(180deg,#4a3a1e,#241a0c); border:1px solid #a8853f;
+    border-radius:8px; color:#ffe9a8; padding:7px 4px; font-size:11px; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:2px; line-height:1.1; min-height:56px; }
+  .cmd:hover:not(:disabled) { background:linear-gradient(180deg,#6b5325,#33240f); border-color:#ffd76a; }
+  .cmd:disabled { opacity:.38; cursor:default; }
+  .cmd .e { font-size:20px; }
+  .cmd .cost { font-size:10px; color:#ffcf6e; }
+  #helpCard { width:250px; padding:8px 10px; font-size:11.5px; color:#cbb98e; line-height:1.5; }
+  #helpCard b { color:#ffe9a8; }
+  /* Minimap */
+  #minimapWrap { position:absolute; left:10px; bottom:160px; z-index:20; width:168px;
+    background:rgba(10,8,4,.9); border:2px solid #8a6b32; border-radius:8px; padding:4px; }
+  #minimap { width:100%; height:156px; display:block; border-radius:4px; cursor:crosshair; }
+  #minimapWrap div { font-size:10px; text-align:center; color:#c9a959; letter-spacing:1px; }
+  /* Selection box */
+  #selbox { position:absolute; border:1px solid #37ff6e; background:rgba(55,255,110,.12);
+    z-index:15; pointer-events:none; display:none; }
+  /* Toast + objective */
+  #objective { position:absolute; top:52px; left:10px; z-index:20; max-width:300px;
+    background:rgba(10,8,4,.82); border:1px solid #8a6b32; border-left:4px solid #ffd76a;
+    border-radius:6px; padding:8px 10px; font-size:12px; line-height:1.45; color:#e8d8ae; }
+  #objective b { color:#ffd76a; }
+  #toast { position:absolute; top:52px; left:50%; transform:translateX(-50%); z-index:30;
+    background:rgba(20,10,4,.92); border:1px solid #ffd76a; color:#ffe9a8;
+    padding:8px 18px; border-radius:8px; font-size:14px; display:none;
+    box-shadow:0 0 18px rgba(255,180,60,.35); }
+  /* Start / end overlays */
+  .overlay { position:absolute; inset:0; z-index:50; display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(ellipse at 50% 35%, rgba(90,60,15,.88), rgba(5,4,2,.96) 70%); }
+  .panel { max-width:620px; width:calc(100% - 32px); text-align:center; padding:28px 30px;
+    background:linear-gradient(180deg, rgba(45,32,14,.98), rgba(15,10,5,.98));
+    border:3px solid #c9a959; border-radius:14px; box-shadow:0 0 60px rgba(255,180,60,.25), 0 10px 40px #000; }
+  .panel h1 { font-size:42px; letter-spacing:3px; color:#ffd76a;
+    text-shadow:0 0 18px #a86e00, 0 3px 0 #000; margin-bottom:4px; }
+  .panel h1 .orc { color:#7dff6e; text-shadow:0 0 18px #1a6e00, 0 3px 0 #000; }
+  .panel .sub { color:#c9a959; letter-spacing:4px; font-size:13px; margin-bottom:14px; }
+  .panel p { font-size:14px; line-height:1.6; color:#e8d8ae; margin:8px 0; }
+  .panel .keys { font-size:12.5px; color:#bfa76e; background:rgba(0,0,0,.4); border:1px solid #6b5325;
+    border-radius:8px; padding:10px 12px; margin:12px 0; text-align:left; line-height:1.7; }
+  #playBtn, #restartBtn { margin-top:12px; font-size:20px; font-family:inherit; font-weight:bold;
+    letter-spacing:1px; color:#1c1206; background:linear-gradient(180deg,#ffe98a,#d4a017);
+    border:2px solid #fff2b0; border-radius:10px; padding:12px 44px; cursor:pointer;
+    box-shadow:0 4px 0 #7a5b00, 0 6px 20px rgba(0,0,0,.6); }
+  #playBtn:hover, #restartBtn:hover { filter:brightness(1.12); }
+  #playBtn:active, #restartBtn:active { transform:translateY(2px); box-shadow:0 2px 0 #7a5b00; }
+  #endOverlay { display:none; }
+  #endTitle.win { color:#7dff6e; } #endTitle.lose { color:#ff6e6e; }
+  #loading { position:absolute; inset:0; z-index:60; display:flex; align-items:center; justify-content:center;
+    background:#0a0f0a; color:#ffd76a; font-size:18px; letter-spacing:2px; }
+  @media (max-width:900px) {
+    #topbar { flex-wrap:wrap; height:auto; min-height:44px; padding:4px 6px; row-gap:4px; }
+    #helpCard { display:none; } #unitCard { width:220px; } #cmdCard { width:280px; }
+    #objective { display:none; } #minimapWrap { bottom:170px; width:130px; }
+    #minimap { height:110px; } .panel h1 { font-size:30px; }
+    #topbar { font-size:12px; gap:8px; } #topbar .logo { display:none; }
+  }
+</style>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<div id="app">
+  <canvas id="scene"></canvas>
+  <div id="topbar">
+    <span class="logo">⚔️ WARCRAFT 3D</span>
+    <span class="res"><span class="ric gold">◉</span> <b id="gold">0</b></span>
+    <span class="res"><span class="ric wood">🌲</span> <b id="wood">0</b></span>
+    <span class="res"><span class="ric food">🍖</span> <b id="food">0/0</b></span>
+    <span class="res">🗡️ <b id="army">0</b></span>
+    <span id="waveInfo">🌊 Wave in 60s</span>
+  </div>
+  <div id="objective"><b>★ Objective:</b> Destroy the <span style="color:#ff8080">Orc base</span> to the north-east! Train peasants (gather gold &amp; wood), raise Footmen &amp; Archers, and survive the waves.</div>
+  <div id="toast"></div>
+  <div id="minimapWrap"><canvas id="minimap" width="160" height="148"></canvas><div>MINIMAP</div></div>
+  <div id="selbox"></div>
+  <div id="bottombar">
+    <div id="unitCard">
+      <div id="portrait">🧑‍🌾</div>
+      <div id="unitInfo"><h2 id="unitName">Peasant</h2><p id="unitDesc">Select a unit.</p>
+        <div id="hpBarWrap"><div id="hpBar"></div></div>
+      </div>
+    </div>
+    <div id="cmdCard"><h3 id="cmdTitle">COMMANDS</h3><div id="cmdGrid"></div></div>
+    <div id="helpCard"><b>🖱 Left-click / drag:</b> select<br><b>🖱 Right-click:</b> move · attack · gather<br><b>A</b> attack-move · <b>S</b> stop · <b>H</b> hold<br><b>WASD / edges:</b> camera · <b>wheel:</b> zoom · <b>Q/E:</b> rotate<br><b>★</b> right-click mine / tree to gather</div>
+  </div>
+  <div id="startOverlay" class="overlay">
+    <div class="panel">
+      <h1>HUMANS <span style="font-size:24px">⚔️</span> <span class="orc">ORCS</span></h1>
+      <div class="sub">W A R C R A F T &nbsp; 3 D</div>
+      <p>Lead the <b style="color:#8ab4ff">Human Alliance</b> against the <b style="color:#7dff6e">Orcish Horde</b> in a real-time strategy battle — gather gold &amp; lumber, raise an army, and raze the enemy fortress!</p>
+      <div class="keys">🖱 <b>Left-click / drag box</b> — select units &amp; buildings &nbsp;•&nbsp; 🖱 <b>Right-click</b> — move, attack, or harvest (mine / tree)<br>⌨️ <b>A</b> attack-move &nbsp; <b>S</b> stop &nbsp; <b>H</b> hold &nbsp;•&nbsp; <b>WASD / mouse edges</b> pan &nbsp; <b>wheel</b> zoom &nbsp; <b>Q/E</b> rotate<br>🏠 Town Hall trains ⛏ Peasants &nbsp;•&nbsp; ⚔️ Barracks trains 🗡️ Footmen + 🏹 Archers &nbsp;•&nbsp; 🗼 Towers defend</div>
+      <button id="playBtn">⚔️ TO BATTLE!</button>
+    </div>
+  </div>
+  <div id="endOverlay" class="overlay">
+    <div class="panel">
+      <h1 id="endTitle">VICTORY</h1>
+      <p id="endText"></p>
+      <button id="restartBtn">⚔️ PLAY AGAIN</button>
+    </div>
+  </div>
+  <div id="loading">⚔️ Summoning the Horde…</div>
+</div>
+<script type="module" src="./game.js"></script>
+</body>
+</html>
