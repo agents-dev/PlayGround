@@ -65,10 +65,10 @@
 <div id="hud">
   <div id="crosshair"><span class="t"></span><span class="b"></span><span class="l"></span><span class="r"></span><span class="dot"></span></div>
   <div id="hitmarker"><span class="h"></span><span class="v"></span></div>
-  <div id="scorewrap"><span>KILLS <b id="kills">0</b></span><span id="timer">5:00</span><span>DEATHS <b id="deaths">0</b></span></div>
+  <div id="scorewrap"><span style="color:#5aa9ff">◆ BLUE <b id="blueScore">0</b></span><span id="timer">5:00</span><span style="color:#ff6b60">RED <b id="redScore">0</b></span></div>
   <div id="killfeed"></div>
   <canvas id="minimap" width="170" height="170"></canvas>
-  <div id="stats">ENEMIES <b id="alive" style="color:#fff">7</b> &nbsp;•&nbsp; WAVE <b style="color:#fff">STrike Zone</b></div>
+  <div id="stats">YOU <b id="kd" style="color:#fff">0K / 0D</b> &nbsp;•&nbsp; <span style="color:#5aa9ff">■ <b id="blueAlive" style="color:#fff">4</b></span> vs <span style="color:#ff6b60">■ <b id="redAlive" style="color:#fff">4</b></span> &nbsp;•&nbsp; FIRST TO 30</div>
   <div id="healthwrap"><div id="healthlabel">HEALTH</div><div id="healthbar"><div id="healthfill"></div></div><div id="healthnum">100</div></div>
   <div id="ammowrap"><div id="wname">BR-7 ASSAULT</div><div id="ammo">30 <small>/ 120</small></div></div>
   <div id="weaponSlots"><div class="slot active" id="slot1">1 • BR-7</div><div class="slot" id="slot2">2 • VK SMG</div></div>
@@ -79,7 +79,7 @@
   <div class="panel">
     <div class="kicker">TACTICAL COMBAT SIMULATOR</div>
     <h1 class="title">BRUTALSTRIKE</h1>
-    <div class="sub">Strike Zone • 7 hostile bots • First to 20 kills or survive 5:00 • Three.js WebGL</div>
+    <div class="sub">Strike Zone • 4v4 team battle (you + 3 BLUE allies vs 4 RED) • First team to 30 or best at 5:00 • Three.js WebGL</div>
     <button class="btn" id="playBtn">DEPLOY</button><br/>
     <button class="btn ghost" id="specBtn">SPECTATE (auto-cam)</button>
     <div class="controls">

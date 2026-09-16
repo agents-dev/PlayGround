@@ -190,6 +190,19 @@ const spawnPoints = [
   new THREE.Vector3(-45, 0, -35), new THREE.Vector3(45, 0, -35), new THREE.Vector3(0, 0, -48),
   new THREE.Vector3(-25, 0, 0), new THREE.Vector3(25, 0, 0),
 ];
+// team bases: BLUE defends south (+Z), RED defends north (-Z)
+const blueSpawns = [
+  new THREE.Vector3(0, 0, 48), new THREE.Vector3(-40, 0, 30),
+  new THREE.Vector3(40, 0, 30), new THREE.Vector3(-20, 0, 42),
+];
+const redSpawns = [
+  new THREE.Vector3(0, 0, -48), new THREE.Vector3(-45, 0, -35),
+  new THREE.Vector3(45, 0, -35), new THREE.Vector3(20, 0, -42),
+];
+function teamSpawn(team) {
+  const list = team === 'blue' ? blueSpawns : redSpawns;
+  return list[Math.floor(Math.random() * list.length)].clone();
+}
 
 // ---------- audio (all procedural, no assets) ----------
 const AudioSys = {
@@ -271,13 +284,15 @@ const WEAPONS = [
   { name: 'VK SMG', mag: 40, reserve: 160, rpm: 800, dmg: 19, spread: 0.017, adsSpread: 0.004, reloadT: 1.4, kick: 0.008, range: 60, auto: true, big: false, color: 0x2a2d33 },
 ];
 const state = {
-  mode: 'menu', kills: 0, deaths: 0, hp: 100, lastHurt: -99,
+  mode: 'menu', team: 'blue', kills: 0, deaths: 0, hp: 100, lastHurt: -99,
+  blueScore: 0, redScore: 0, targetScore: 30,
   wi: 0, magAmmo: [30, 40], reserveAmmo: [120, 160], reloadingUntil: 0,
   firing: false, ads: false, adsK: 0, nextShot: 0, yaw: 0, pitch: 0,
   pos: new THREE.Vector3(0, 1.7, 48), vel: new THREE.Vector3(),
   onGround: true, crouch: false, bobT: 0, stepT: 0, recoil: 0,
   timeLeft: 300, matchOver: false, shake: 0, spectate: false,
 };
+const TEAM_COLOR = { blue: '#5aa9ff', red: '#ff6b60' };
 
 // viewmodel rig
 const gunRig = new THREE.Group(); camera.add(gunRig); scene.add(camera);
@@ -354,9 +369,12 @@ function addDecal(p, n) {
   if (decals.length > 60) { const old = decals.shift(); scene.remove(old.m); }
 }
 
-// ---------- bots ----------
+// ---------- bots (4v4: YOU + 3 BLUE allies vs 4 RED) ----------
 const bots = [];
-const BOT_NAMES = ['Viper', 'Havoc', 'Raptor', 'Ghost', 'Reaper', 'Wolf', 'Jinx'];
+const BLUE_NAMES = ['Ghost', 'Raptor', 'Wolf'];
+const RED_NAMES = ['Viper', 'Havoc', 'Reaper', 'Jinx'];
+const blueAccents = [0x2e6db3, 0x2f7fc9, 0x3a5a9a];
+const redAccents = [0x7a2020, 0x8a2f23, 0x662222, 0x74301a];
 const botBodyMat = new THREE.MeshStandardMaterial({ color: 0x7a2020, roughness: 0.8 });
 const botDarkMat = new THREE.MeshStandardMaterial({ color: 0x23211e, roughness: 0.85 });
 const botSkinMat = new THREE.MeshStandardMaterial({ color: 0xc9a17e, roughness: 0.7 });
@@ -379,21 +397,42 @@ function buildSoldier(accent) {
   bodyBox.position.y = 1.0; g.add(bodyBox);
   const headBox = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.45, 0.45), new THREE.MeshBasicMaterial({ visible: false }));
   headBox.position.y = 1.72; g.add(headBox);
+  // overhead name tag (team-colored) + ground ring so teams read at a glance
   return { group: g, legL, legR, bodyBox, headBox, gunTip: gun };
 }
-const accents = [0x7a2020, 0x8a2f23, 0x5a2320, 0x74301a, 0x662222, 0x7c2d12, 0x5e1f1f];
-for (let i = 0; i < 7; i++) {
-  const s = buildSoldier(accents[i]);
+function makeNameTag(name, team) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+  const g = c.getContext('2d');
+  const bg = team === 'blue' ? 'rgba(30,90,180,0.88)' : 'rgba(180,40,30,0.88)';
+  g.fillStyle = bg;
+  g.beginPath(); g.roundRect(28, 8, 200, 40, 10); g.fill();
+  g.fillStyle = '#fff'; g.font = 'bold 26px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(name.toUpperCase(), 128, 29);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true }));
+  s.scale.set(1.5, 0.375, 1); s.position.y = 2.2; s.renderOrder = 5;
+  return s;
+}
+const roster = [
+  ...BLUE_NAMES.map((name, i) => ({ name, team: 'blue', accent: blueAccents[i % blueAccents.length] })),
+  ...RED_NAMES.map((name, i) => ({ name, team: 'red', accent: redAccents[i % redAccents.length] })),
+];
+roster.forEach((r, i) => {
+  const s = buildSoldier(r.accent);
+  s.group.add(makeNameTag(r.name, r.team));
+  const ring = new THREE.Mesh(new THREE.CircleGeometry(0.55, 20),
+    new THREE.MeshBasicMaterial({ color: r.team === 'blue' ? 0x3a8cff : 0xff4438, transparent: true, opacity: 0.75 }));
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03; s.group.add(ring);
   scene.add(s.group);
   bots.push({
-    name: BOT_NAMES[i], ...s, hp: 100, alive: true, respawnAt: 0,
-    pos: spawnPoints[(i + 2) % spawnPoints.length].clone(),
+    name: r.name, team: r.team, ...s, ring, hp: 100, alive: true, respawnAt: 0,
+    pos: teamSpawn(r.team),
     yaw: 0, speed: rand(3.2, 4.6), state: 'seek', strafeDir: 1, strafeT: 0,
     nextBurst: rand(1, 3), burstLeft: 0, nextBotShot: 0, walkT: Math.random() * 9,
     gunCd: 0,
   });
   s.group.position.copy(bots[i].pos);
-}
+});
 
 // collision helper (XZ + step)
 function collideMove(p, halfR, height) {
@@ -499,7 +538,7 @@ function drawMinimap() {
   bots.forEach(b => {
     if (!b.alive) return;
     const [x, z] = w2m(b.pos.x, b.pos.z);
-    mmap.fillStyle = '#ff3b30'; mmap.beginPath(); mmap.arc(x, z, 4, 0, 7); mmap.fill();
+    mmap.fillStyle = b.team === 'blue' ? '#5aa9ff' : '#ff3b30'; mmap.beginPath(); mmap.arc(x, z, 4, 0, 7); mmap.fill();
   });
   const [px, pz] = w2m(state.pos.x, state.pos.z);
   mmap.save(); mmap.translate(px, pz); mmap.rotate(-state.yaw);
@@ -551,12 +590,16 @@ function playerShoot(now) {
   const spread = state.ads ? w.adsSpread : w.spread + (sprintFactor() * 0.02);
   raycaster.setFromCamera(new THREE.Vector2(rand(-spread, spread) * 60, rand(-spread, spread) * 60), camera);
   raycaster.far = w.range + 60;
-  // test bots
+  // test bots — RED are hostile, BLUE allies are immune (friendly fire off)
   let best = null, bestDist = 1e9, headshot = false;
+  let allyBlock = null, allyDist = 1e9;
   bots.forEach(b => {
     if (!b.alive) return;
     const hits = raycaster.intersectObjects([b.headBox, b.bodyBox], false);
-    if (hits.length && hits[0].distance < bestDist) { best = b; bestDist = hits[0].distance; headshot = hits[0].object === b.headBox; }
+    if (!hits.length) return;
+    if (b.team === 'red') {
+      if (hits[0].distance < bestDist) { best = b; bestDist = hits[0].distance; headshot = hits[0].object === b.headBox; }
+    } else if (hits[0].distance < allyDist) { allyBlock = b; allyDist = hits[0].distance; }
   });
   // test walls distance
   let wallDist = 1e9, wallPoint = null, wallNormal = null;
@@ -577,13 +620,19 @@ function playerShoot(now) {
     }
   }
   const muzzleWorld = new THREE.Vector3(); gunTip.getWorldPosition(muzzleWorld);
-  if (best && bestDist < wallDist) {
+  if (allyBlock && allyDist < bestDist && allyDist < wallDist) {
+    // ally in the way — spark off them, no damage, no penalty
+    fireTracer(muzzleWorld, tmpV2.copy(raycaster.ray.origin).addScaledVector(raycaster.ray.direction, allyDist));
+    if (now - lastFriendlyWarn > 2.5) { lastFriendlyWarn = now; toast(`${allyBlock.name} is on your team — friendly fire off`); }
+  } else if (best && bestDist < wallDist) {
     const dmg = (headshot ? w.dmg * 2 : w.dmg) * clamp(1 - bestDist / (w.range * 2.2), 0.45, 1);
     best.hp -= dmg;
     burst(tmpV.copy(raycaster.ray.origin).addScaledVector(raycaster.ray.direction, bestDist), 8, 0xa01818, 4);
     fireTracer(muzzleWorld, tmpV2.copy(raycaster.ray.origin).addScaledVector(raycaster.ray.direction, bestDist));
-    if (best.hp <= 0 && best.alive) killBot(best, headshot);
-    else { showHit(false); AudioSys.hit(false); }
+    if (best.hp <= 0 && best.alive) {
+      state.kills++;
+      damageBot(best, 9999, { name: 'YOU', team: 'blue', isPlayer: true }, headshot, true);
+    } else { showHit(false); AudioSys.hit(false); }
   } else if (wallPoint) {
     burst(wallPoint, 7, 0xffcc88, 4.5);
     burst(wallPoint, 4, 0x555550, 2);
@@ -602,15 +651,32 @@ function playerShoot(now) {
   updateAmmoHUD();
   if (state.magAmmo[state.wi] === 0) startReload();
 }
-function killBot(b, headshot) {
-  b.alive = false; b.hp = 0; b.respawnAt = performance.now() / 1000 + 3;
-  b.group.rotation.x = -Math.PI / 2; b.group.position.y = 0.25;
-  state.kills++;
-  $('kills').textContent = state.kills;
-  showHit(true); AudioSys.hit(true);
-  feed(`<b style="color:#37e08b">YOU</b> ${headshot ? '🎯 HEADSHOT' : '☠'} <b style="color:#ff6b60">${b.name}</b>`);
-  burst(b.pos.clone().add(new THREE.Vector3(0, 1.3, 0)), 16, 0xa01818, 5);
-  if (state.kills >= 20) endMatch(true);
+let lastFriendlyWarn = -99;
+function teamColorOf(name, team) {
+  if (name === 'YOU') return '#37e08b';
+  return team === 'blue' ? TEAM_COLOR.blue : TEAM_COLOR.red;
+}
+function updateScoreHUD() {
+  $('blueScore').textContent = state.blueScore;
+  $('redScore').textContent = state.redScore;
+  $('kd').textContent = `${state.kills}K / ${state.deaths}D`;
+}
+// victim: bot, killer: {name, team, isPlayer?}
+function damageBot(victim, dmg, killer, headshot = false, skipSubtract = false) {
+  if (!victim.alive || state.matchOver) return;
+  if (!skipSubtract) victim.hp -= dmg;
+  if (victim.hp > 0) return;
+  victim.alive = false; victim.hp = 0; victim.respawnAt = performance.now() / 1000 + 3;
+  victim.group.rotation.x = -Math.PI / 2; victim.group.position.y = 0.25;
+  if (killer.team === 'blue') state.blueScore++; else state.redScore++;
+  updateScoreHUD();
+  const kc = teamColorOf(killer.name, killer.team), vc = teamColorOf(victim.name, victim.team);
+  feed(`<b style="color:${kc}">${killer.name}</b> ${headshot ? '🎯 HEADSHOT' : '☠'} <b style="color:${vc}">${victim.name}</b>`);
+  burst(victim.pos.clone().add(new THREE.Vector3(0, 1.3, 0)), 16, 0xa01818, 5);
+  if (killer.isPlayer) { showHit(true); AudioSys.hit(true); }
+  else if (killer.name === 'YOU') { showHit(true); AudioSys.hit(true); }
+  if (state.blueScore >= state.targetScore) endMatch('blue');
+  else if (state.redScore >= state.targetScore) endMatch('red');
 }
 function hurtPlayer(dmg, from) {
   if (state.matchOver || state.mode !== 'playing') return;
@@ -621,13 +687,14 @@ function hurtPlayer(dmg, from) {
   state.shake = Math.min(0.7, state.shake + 0.2);
   if (state.hp <= 0) {
     state.hp = 0; state.deaths++;
-    $('deaths').textContent = state.deaths;
-    feed(`<b style="color:#ff6b60">${from?.name || 'ENEMY'}</b> ☠ <b style="color:#37e08b">YOU</b>`);
-    toast('You were eliminated — redeploying…');
+    state.redScore++;
+    updateScoreHUD();
+    feed(`<b style="color:${TEAM_COLOR.red}">${from?.name || 'RED'}</b> ☠ <b style="color:#37e08b">YOU</b>`);
+    toast('You were eliminated — redeploying with BLUE…');
     state.hp = 100;
-    state.pos.copy(spawnPoints[Math.floor(Math.random() * spawnPoints.length)]).add(new THREE.Vector3(0, 1.7, 0));
+    state.pos.copy(teamSpawn('blue')).add(new THREE.Vector3(0, 1.7, 0));
     state.vel.set(0, 0, 0);
-    if (state.deaths >= 10) endMatch(false);
+    if (state.redScore >= state.targetScore) endMatch('red');
   }
 }
 
@@ -642,20 +709,22 @@ function startGame(spectate = false) {
   menu.style.display = 'none'; gameoverEl.style.display = 'none';
   hud.classList.add('on');
   if (!spectate) renderer.domElement.requestPointerLock?.();
-  toast(spectate ? 'Spectating — press DEPLOY to play' : 'Good hunting. First to 20 kills.');
+  toast(spectate ? 'Spectating 4v4 — BLUE vs RED' : 'Fight for BLUE. First team to 30.');
   $('loading').textContent = '';
+  updateScoreHUD();
 }
 $('playBtn').onclick = () => startGame(false);
 $('specBtn').onclick = () => startGame(true);
 $('againBtn').onclick = () => location.reload();
-function endMatch(win) {
+function endMatch(result) {
   if (state.matchOver) return;
   state.matchOver = true;
   document.exitPointerLock?.();
-  $('endKicker').textContent = win ? 'STRIKE ZONE SECURED' : 'MISSION FAILED';
-  $('endTitle').textContent = win ? 'VICTORY' : 'DEFEAT';
-  $('endTitle').style.background = win ? 'linear-gradient(180deg,#fff,#37e08b)' : 'linear-gradient(180deg,#fff,#ff3b30)';
-  $('endSub').textContent = `${state.kills} kills • ${state.deaths} deaths • ${fmtTime(state.timeLeft)} left • accuracy sim ready for rematch`;
+  const win = result === 'blue', draw = result === 'draw';
+  $('endKicker').textContent = draw ? 'STALEMATE' : win ? 'STRIKE ZONE SECURED' : 'MISSION FAILED';
+  $('endTitle').textContent = draw ? 'DRAW' : win ? 'VICTORY' : 'DEFEAT';
+  $('endTitle').style.background = draw ? 'linear-gradient(180deg,#fff,#ffd76a)' : win ? 'linear-gradient(180deg,#fff,#37e08b)' : 'linear-gradient(180deg,#fff,#ff3b30)';
+  $('endSub').textContent = `BLUE ${state.blueScore} • ${state.redScore} RED — you went ${state.kills}K / ${state.deaths}D • ${fmtTime(state.timeLeft)} left`;
   setTimeout(() => { gameoverEl.style.display = 'flex'; hud.classList.remove('on'); }, 600);
 }
 function fmtTime(s) { s = Math.max(0, Math.ceil(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
@@ -685,7 +754,11 @@ function animate() {
   if (state.mode === 'playing' && !state.matchOver) {
     state.timeLeft -= dt;
     $('timer').textContent = fmtTime(state.timeLeft);
-    if (state.timeLeft <= 0) endMatch(state.kills >= 10);
+    if (state.timeLeft <= 0) {
+      if (state.blueScore > state.redScore) endMatch('blue');
+      else if (state.redScore > state.blueScore) endMatch('red');
+      else endMatch('draw');
+    }
   }
 
   if (state.mode === 'playing' && (state.spectate || params.has('autostart'))) {
@@ -789,34 +862,66 @@ function updateGunFx(dt, now) {
   gunRig.position.x += Math.cos(state.bobT) * 0.0012;
 }
 
+// nearest living enemy of bot b: RED hunts YOU + BLUE allies, BLUE hunts RED
+function nearestEnemy(b) {
+  let best = null, bestDist = 1e9, isPlayer = false;
+  const consider = (pos, ref, player) => {
+    const d = tmpV.copy(pos).sub(b.pos); d.y = 0;
+    const dist = d.length();
+    if (dist < bestDist) { bestDist = dist; best = ref; isPlayer = player; }
+  };
+  if (b.team === 'red' && state.mode === 'playing' && !state.spectate && !state.matchOver) {
+    consider(state.pos, null, true);
+  }
+  for (const o of bots) {
+    if (o === b || !o.alive || o.team === b.team) continue;
+    consider(o.pos.clone().add(new THREE.Vector3(0, 1.2, 0)), o, false);
+  }
+  return best ? { ref: best, dist: bestDist, isPlayer } : null;
+}
+function visibleFrom(eye, targetPos) {
+  const d = tmpV.copy(targetPos).sub(eye);
+  const dist = d.length();
+  if (dist > 70) return false;
+  return hasLOS(eye, targetPos);
+}
 function updateBots(dt, now) {
   const playerEye = tmpV3.copy(state.pos);
-  let alive = 0;
+  let blueAlive = 1, redAlive = 0; // YOU always count for BLUE
   for (const b of bots) {
     if (!b.alive) {
       if (now > b.respawnAt && !state.matchOver) {
         b.alive = true; b.hp = 100;
-        b.pos.copy(spawnPoints[Math.floor(Math.random() * spawnPoints.length)]);
+        b.pos.copy(teamSpawn(b.team));
         b.group.rotation.x = 0; b.group.position.copy(b.pos);
         b.group.visible = true;
       } else { b.group.visible = now % 0.6 < 0.4; }
       continue;
     }
-    alive++;
+    if (b.team === 'blue') blueAlive++; else redAlive++;
     b.walkT += dt * 6;
-    // AI: move toward player, strafe in range, avoid walls crudely
-    tmpV.copy(playerEye).sub(b.pos); tmpV.y = 0;
-    const dist = tmpV.length(); tmpV.normalize();
-    const eye = tmpV2.set(b.pos.x, 1.6, b.pos.z);
-    const canSee = dist < 70 && hasLOS(eye, playerEye);
+    const eye = new THREE.Vector3(b.pos.x, 1.6, b.pos.z);
+    // pick target: nearest visible enemy, else keep pushing toward nearest enemy
+    const foe = nearestEnemy(b);
+    let targetPos = null, targetBot = null, targetIsPlayer = false, canSee = false, dist = 1e9;
+    if (foe) {
+      const fp = foe.isPlayer ? playerEye : foe.ref.pos.clone().add(new THREE.Vector3(0, 1.3, 0));
+      dist = foe.dist;
+      if (visibleFrom(eye, fp)) { canSee = true; targetPos = fp; targetBot = foe.ref; targetIsPlayer = foe.isPlayer; }
+      else targetPos = foe.isPlayer ? playerEye.clone() : foe.ref.pos.clone();
+    } else {
+      targetPos = new THREE.Vector3(0, 1, 0); // no foes? push mid
+    }
+    // movement: strafe at close range vs visible foe, else advance
+    tmpV.copy(targetPos).sub(b.pos); tmpV.y = 0;
+    const mdist = tmpV.length(); tmpV.normalize();
     let mv = new THREE.Vector3();
-    if (canSee && dist < 14) {
-      // strafe + back off
+    if (canSee && mdist < 14) {
       b.strafeT -= dt;
       if (b.strafeT <= 0) { b.strafeDir *= -1; b.strafeT = rand(0.7, 1.8); }
       mv.addScaledVector(new THREE.Vector3(-tmpV.z, 0, tmpV.x), b.strafeDir * 0.9);
-      if (dist < 7) mv.addScaledVector(tmpV, -0.9);
-      else if (dist > 12) mv.addScaledVector(tmpV, 0.7);
+      if (mdist < 7) mv.addScaledVector(tmpV, -0.9);
+      else if (mdist > 12) mv.addScaledVector(tmpV, 0.7);
     } else {
       mv.add(tmpV);
       b.strafeT = 0;
@@ -836,32 +941,41 @@ function updateBots(dt, now) {
       b.legR.rotation.x = -Math.sin(b.walkT * 2) * 0.6;
     }
     b.yaw = Math.atan2(tmpV.x, tmpV.z) + Math.PI;
-    // face player when visible else face move dir
-    const faceYaw = canSee ? Math.atan2(playerEye.x - b.pos.x, playerEye.z - b.pos.z) : Math.atan2(mv.x, mv.z);
+    // face visible foe, else face move dir
+    const faceYaw = canSee ? Math.atan2(targetPos.x - b.pos.x, targetPos.z - b.pos.z) : Math.atan2(mv.x, mv.z);
     b.group.rotation.y = faceYaw;
     b.group.position.copy(b.pos);
-    // shooting
+    // shooting — bot-vs-bot battles run even in spectate; the player is only a target while deployed
+    const canShootPlayer = targetIsPlayer && !state.spectate;
+    const canShootBot = !targetIsPlayer && targetBot && targetBot.alive;
     b.nextBurst -= dt;
-    if (canSee && state.mode === 'playing' && !state.matchOver && !state.spectate && dist < 55) {
+    if (canSee && state.mode === 'playing' && !state.matchOver && (canShootPlayer || canShootBot) && dist < 55) {
       if (b.nextBurst <= 0 && b.burstLeft <= 0) { b.burstLeft = 3 + (Math.random() * 3 | 0); b.nextBurst = rand(0.7, 1.8); }
       if (b.burstLeft > 0) {
         b.nextBotShot -= dt;
         if (b.nextBotShot <= 0) {
           b.nextBotShot = 0.16;
           b.burstLeft--;
-          // accuracy falls with distance + player speed
-          const hv = Math.hypot(state.vel.x, state.vel.z);
+          const hv = targetIsPlayer ? Math.hypot(state.vel.x, state.vel.z) : 2;
           const hitP = clamp(0.42 - dist / 130 - hv / 40, 0.06, 0.4);
           const from = new THREE.Vector3(b.pos.x, 1.45, b.pos.z);
-          fireTracer(from, playerEye.clone().add(new THREE.Vector3(rand(-1, 1), rand(-0.5, 0.5), rand(-1, 1))));
-          burst(playerEye.clone(), 2, 0xffdd99, 2);
+          const aim = targetPos.clone().add(new THREE.Vector3(rand(-1, 1), rand(-0.5, 0.5), rand(-1, 1)));
+          fireTracer(from, aim);
+          burst(targetPos.clone(), 2, 0xffdd99, 2);
           AudioSys.enemyShot(dist);
-          if (Math.random() < hitP) hurtPlayer(rand(7, 15), b);
+          if (Math.random() < hitP) {
+            if (targetIsPlayer) hurtPlayer(rand(7, 15), b);
+            else if (targetBot.alive) {
+              burst(targetPos.clone(), 5, 0xa01818, 3);
+              damageBot(targetBot, rand(9, 18), b, false);
+            }
+          }
         }
       }
     }
   }
-  $('alive').textContent = alive;
+  $('blueAlive').textContent = blueAlive;
+  $('redAlive').textContent = redAlive;
 }
 
 addEventListener('resize', () => {
