@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Neon Vice — Open City Demo (GTA-inspired)</title>
+<style>
+  * { box-sizing: border-box; margin:0; padding:0; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#0b0e1a; font-family:'Segoe UI',system-ui,Arial,sans-serif; color:#fff; }
+  #game { position:fixed; inset:0; display:block; }
+  #hud { position:fixed; top:0; left:0; right:0; display:flex; justify-content:space-between; align-items:flex-start; padding:12px 14px; pointer-events:none; z-index:5; }
+  .hud-card { background:rgba(10,12,28,.72); border:1px solid rgba(255,45,149,.45); border-radius:12px; padding:8px 12px; backdrop-filter:blur(6px); box-shadow:0 4px 24px rgba(255,45,149,.15); }
+  #title { font-weight:900; letter-spacing:2px; font-size:15px; }
+  #title span { color:#ff2d95; }
+  #subtitle { font-size:11px; opacity:.7; letter-spacing:1px; }
+  #stats { text-align:right; font-size:13px; line-height:1.5; }
+  #wanted { color:#ffd54a; font-size:16px; letter-spacing:2px; }
+  #cash { color:#5dff8d; font-weight:800; }
+  #speed { color:#7dd3fc; }
+  #hint { position:fixed; bottom:12px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.65); border:1px solid rgba(125,211,252,.4); padding:8px 14px; border-radius:999px; font-size:12.5px; z-index:5; white-space:nowrap; max-width:94vw; overflow:hidden; text-overflow:ellipsis; }
+  #overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:10; background:radial-gradient(ellipse at center, rgba(11,14,26,.25) 0%, rgba(11,14,26,.78) 100%); transition:opacity .3s; }
+  #overlay.hidden { opacity:0; pointer-events:none; }
+  #panel { background:linear-gradient(160deg,#141838 0%,#241040 60%,#3b0f4f 100%); border:1px solid #ff2d95; border-radius:18px; padding:28px 30px; max-width:520px; width:92vw; text-align:center; box-shadow:0 0 60px rgba(255,45,149,.35); }
+  #panel h1 { font-size:42px; font-weight:900; letter-spacing:3px; background:linear-gradient(90deg,#ff2d95,#ffd54a,#22d3ee); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  #panel h2 { font-size:13px; letter-spacing:4px; opacity:.8; margin:4px 0 12px; }
+  #panel p { font-size:13.5px; opacity:.9; line-height:1.6; margin-bottom:12px; }
+  #panel kbd { background:#000; border:1px solid #555; border-radius:6px; padding:1px 7px; font-size:12px; }
+  #playBtn { pointer-events:auto; cursor:pointer; margin-top:8px; font-size:17px; font-weight:800; letter-spacing:1px; color:#fff; background:linear-gradient(90deg,#ff2d95,#ff6b35); border:none; border-radius:12px; padding:12px 34px; box-shadow:0 6px 24px rgba(255,45,149,.5); }
+  #playBtn:hover { filter:brightness(1.1); }
+  #minimap { position:fixed; right:12px; bottom:52px; width:150px; height:150px; border-radius:12px; border:1px solid rgba(255,255,255,.3); z-index:5; background:rgba(0,0,0,.5); }
+  #touch { position:fixed; left:0; right:0; bottom:0; display:none; justify-content:space-between; padding:0 14px 70px; z-index:6; pointer-events:none; }
+  #joy { width:110px; height:110px; border-radius:50%; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.3); position:relative; pointer-events:auto; }
+  #stick { width:48px; height:48px; border-radius:50%; background:rgba(255,45,149,.8); position:absolute; left:31px; top:31px; }
+  #btns { display:flex; gap:10px; align-items:flex-end; pointer-events:auto; }
+  .tbtn { width:62px; height:62px; border-radius:50%; border:1px solid rgba(255,255,255,.4); background:rgba(34,211,238,.25); color:#fff; font-weight:800; }
+  @media (max-width:700px){ #minimap{ width:110px; height:110px; bottom:190px; } #touch{ display:flex; } #hint{ bottom:auto; top:64px; font-size:11px; } #panel h1{ font-size:30px; } }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud">
+  <div class="hud-card"><div id="title">NEON <span>VICE</span></div><div id="subtitle">OPEN-CITY DEMO • GTA-INSPIRED</div></div>
+  <div class="hud-card" id="stats"><div id="wanted">★★☆☆☆</div><div id="cash">$ 1,250</div><div id="speed">ON FOOT • 0 mph</div><div id="mission" style="font-size:11px;opacity:.85">Mission: Grab a ride (E near car)</div></div>
+</div>
+<canvas id="minimap" width="150" height="150"></canvas>
+<div id="hint">WASD / Arrows: move &bull; E: enter / exit car &bull; R: respawn &bull; Grab green $ for cash, dodge cops!</div>
+<div id="touch"><div id="joy"><div id="stick"></div></div><div id="btns"><button class="tbtn" id="btnEnter">E</button><button class="tbtn" id="btnResp">R</button></div></div>
+<div id="overlay"><div id="panel">
+  <h1>NEON VICE</h1><h2>LEONIDA • OPEN CITY PROTOTYPE</h2>
+  <p>An original top-down open-world demo inspired by GTA: steal cars, outrun the cops, raise your wanted level, and stack cash.</p>
+  <p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> drive / walk &nbsp;•&nbsp; <kbd>E</kbd> enter–exit car &nbsp;•&nbsp; <kbd>R</kbd> respawn</p>
+  <button id="playBtn" aria-label="Start Game">▶ &nbsp;START GAME</button>
+  <p style="margin-top:10px;font-size:11px;opacity:.65">Not affiliated with Rockstar Games. All art &amp; code original.</p>
+</div></div>
+<script>
+(() => {
+"use strict";
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const mm = document.getElementById('minimap').getContext('2d');
+const overlay = document.getElementById('overlay');
+let W=0,H=0,DPR=1;
+function resize(){ DPR=Math.min(2,window.devicePixelRatio||1); W=window.innerWidth; H=window.innerHeight; canvas.width=W*DPR; canvas.height=H*DPR; canvas.style.width=W+'px'; canvas.style.height=H+'px'; ctx.setTransform(DPR,0,0,DPR,0,0); }
+window.addEventListener('resize',resize); resize();
+
+// World
+const WORLD=3200, BLOCK=320, ROAD=86;
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const buildings=[];
+for(let gx=0;gx<WORLD;gx+=BLOCK){ for(let gy=0;gy<WORLD;gy+=BLOCK){
+  if(Math.random()<0.12) continue; // park
+  const n=1+Math.floor(Math.random()*3);
+  for(let i=0;i<n;i++){ buildings.push({x:gx+ROAD+10+Math.random()*(BLOCK-ROAD-90), y:gy+ROAD+10+Math.random()*(BLOCK-ROAD-90), w:rnd(50,110), h:rnd(50,110), c:['#1b2340','#232b52','#2c1e4f','#173b45','#40204a'][Math.floor(Math.random()*5)], neon:['#ff2d95','#22d3ee','#ffd54a','#5dff8d'][Math.floor(Math.random()*4)] }); }
+}}
+const pickups=[]; for(let i=0;i<26;i++) pickups.push({x:rnd(100,WORLD-100),y:rnd(100,WORLD-100),taken:false,ph:rnd(0,6)});
+const cars=[];
+const carColors=['#ff2d95','#22d3ee','#ffd54a','#ff6b35','#5dff8d','#c084fc','#f8fafc'];
+for(let i=0;i<14;i++){ const onRoad=Math.random()<0.7; cars.push({x:onRoad?Math.floor(rnd(0,10))*(BLOCK)+BLOCK/2:rnd(200,WORLD-200), y:onRoad?rnd(0,WORLD):Math.floor(rnd(0,10))*(BLOCK)+BLOCK/2, a:rnd(0,Math.PI*2), speed:0, color:carColors[i%carColors.length], driver:i<7, t:rnd(0,9)}); }
+const peds=[]; for(let i=0;i<30;i++) peds.push({x:rnd(0,WORLD),y:rnd(0,WORLD),a:rnd(0,6.28),s:rnd(.4,1)});
+const cops=[];
+const player={x:WORLD/2,y:WORLD/2,a:0,speed:0,inCar:null,cash:1250,wanted:2};
+const keys={};
+addEventListener('keydown',e=>{ keys[e.key.toLowerCase()]=true; if(e.key==='Enter') hideOverlay(); if(e.key.toLowerCase()==='e') toggleCar(); if(e.key.toLowerCase()==='r') respawn(); });
+addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
+function hideOverlay(){ overlay.classList.add('hidden'); }
+document.getElementById('playBtn').onclick=hideOverlay; overlay.onclick=e=>{ if(e.target===overlay) hideOverlay(); };
+function respawn(){ player.x=WORLD/2; player.y=WORLD/2; player.inCar=null; player.wanted=2; }
+function toggleCar(){
+  if(player.inCar){ const c=player.inCar; c.driver=false; player.x=c.x+34; player.y=c.y; player.inCar=null; return; }
+  let best=null,bd=90;
+  for(const c of cars){ const d=Math.hypot(c.x-player.x,c.y-player.y); if(d<bd){bd=d;best=c;} }
+  if(best){ player.inCar=best; best.driver=false; document.getElementById('mission').textContent='Mission: Outrun the cops! Wanted rising…'; hideOverlay(); }
+}
+// touch
+const joy=document.getElementById('joy'), stick=document.getElementById('stick');
+let joyVec={x:0,y:0};
+function joyPos(t){ const r=joy.getBoundingClientRect(); const cx=r.left+r.width/2, cy=r.top+r.height/2; let dx=t.clientX-cx, dy=t.clientY-cy; const m=Math.hypot(dx,dy)||1, max=38; if(m>max){dx=dx/m*max;dy=dy/m*max;} stick.style.left=(31+dx)+'px'; stick.style.top=(31+dy)+'px'; joyVec={x:dx/max,y:dy/max}; }
+joy.addEventListener('touchstart',e=>joyPos(e.touches[0]),{passive:true}); joy.addEventListener('touchmove',e=>{joyPos(e.touches[0]);e.preventDefault();},{passive:false}); joy.addEventListener('touchend',()=>{joyVec={x:0,y:0};stick.style.left='31px';stick.style.top='31px';});
+document.getElementById('btnEnter').onclick=toggleCar; document.getElementById('btnResp').onclick=respawn;
+
+function isRoad(x,y){ const mx=x%BLOCK, my=y%BLOCK; return mx<ROAD||my<ROAD; }
+function collide(x,y,r){ for(const b of buildings){ if(x+r>b.x&&x-r<b.x+b.w&&y+r>b.y&&y-r<b.y+b.h) return true; } return x<20||y<20||x>WORLD-20||y>WORLD-20; }
+
+let camX=player.x, camY=player.y, tGlobal=0;
+function step(dt){
+  tGlobal+=dt;
+  let ix=((keys['d']||keys['arrowright'])?1:0)-((keys['a']||keys['arrowleft'])?1:0)+joyVec.x;
+  let iy=((keys['s']||keys['arrowdown'])?1:0)-((keys['w']||keys['arrowup'])?1:0)+joyVec.y;
+  if(player.inCar){
+    const c=player.inCar;
+    if(ix!==0) c.a+=ix*2.2*dt*(c.speed>=0?1:-1);
+    const acc=(-iy)*420;
+    c.speed+= (acc - c.speed*1.4)*dt;
+    c.speed=Math.max(-160,Math.min(460,c.speed));
+    const nx=c.x+Math.cos(c.a)*c.speed*dt, ny=c.y+Math.sin(c.a)*c.speed*dt;
+    if(!collide(nx,ny,20)){ c.x=nx; c.y=ny; } else { c.speed*=-0.25; player.wanted=Math.min(5,player.wanted+dt*0.2); }
+    player.x=c.x; player.y=c.y; player.a=c.a;
+    if(Math.abs(c.speed)>300) player.wanted=Math.min(5,player.wanted+dt*0.12);
+    else player.wanted=Math.max(1,player.wanted-dt*0.03);
+  } else {
+    const m=Math.hypot(ix,iy)||1; const sp=(ix||iy)?230:0;
+    if(ix||iy) player.a=Math.atan2(iy,ix);
+    const nx=player.x+ix/m*sp*dt*(ix&&iy?0.75:1), ny=player.y+iy/m*sp*dt*(ix&&iy?0.75:1);
+    if(!collide(nx,player.y,12)) player.x=nx;
+    if(!collide(player.x,ny,12)) player.y=ny;
+    player.wanted=Math.max(1,player.wanted-dt*0.05);
+  }
+  // traffic
+  for(const c of cars){ if(c===player.inCar) continue; if(!c.driver) continue;
+    c.t+=dt; const aheadX=c.x+Math.cos(c.a)*70, aheadY=c.y+Math.sin(c.a)*70;
+    if(collide(aheadX,aheadY,16)||Math.random()<0.005) c.a+= (Math.random()<0.5?1:-1)*Math.PI/2;
+    c.speed+= ((isRoad(c.x,c.y)?140:60)-c.speed)*dt;
+    const nx=c.x+Math.cos(c.a)*c.speed*dt, ny=c.y+Math.sin(c.a)*c.speed*dt;
+    if(!collide(nx,ny,18)){c.x=nx;c.y=ny;} else c.a+=Math.PI/2;
+    c.x=Math.max(20,Math.min(WORLD-20,c.x)); c.y=Math.max(20,Math.min(WORLD-20,c.y));
+  }
+  for(const p of peds){ p.a+=Math.sin(tGlobal+p.x)*0.01; p.x+=Math.cos(p.a)*p.s*40*dt; p.y+=Math.sin(p.a)*p.s*40*dt; if(collide(p.x,p.y,6)) p.a+=Math.PI/2; }
+  // cops
+  const want=Math.round(player.wanted);
+  while(cops.length<want-1) cops.push({x:player.x+rnd(-800,800),y:player.y+rnd(-800,800),a:0,speed:0});
+  while(cops.length>want-1) cops.pop();
+  for(const c of cops){ const d=Math.atan2(player.y-c.y,player.x-c.x); c.a=d; c.speed=300+want*30; c.x+=Math.cos(c.a)*c.speed*dt; c.y+=Math.sin(c.a)*c.speed*dt;
+    if(Math.hypot(c.x-player.x,c.y-player.y)<(player.inCar?60:30)){ player.cash=Math.max(0,player.cash-40*dt*10); if(Math.random()<0.02){respawn();} } }
+  // pickups
+  for(const pk of pickups){ if(!pk.taken && Math.hypot(pk.x-player.x,pk.y-player.y)<34){ pk.taken=true; player.cash+=250; player.wanted=Math.min(5,player.wanted+0.3);} }
+  if(pickups.every(p=>p.taken)) pickups.forEach(p=>{p.taken=false;p.x=rnd(100,WORLD-100);p.y=rnd(100,WORLD-100);});
+  camX+=(player.x-camX)*Math.min(1,dt*5); camY+=(player.y-camY)*Math.min(1,dt*5);
+}
+
+function drawCar(x,y,a,color,police){
+  ctx.save(); ctx.translate(x,y); ctx.rotate(a);
+  ctx.fillStyle='rgba(0,0,0,.4)'; ctx.fillRect(-22,-12,46,26);
+  ctx.fillStyle=police?'#1e3a8a':color; roundRect(-22,-12,44,24,6); ctx.fill();
+  ctx.fillStyle=police?'#fff':'rgba(255,255,255,.85)'; roundRect(-4,-10,14,20,3); ctx.fill();
+  ctx.fillStyle='#0b0e1a'; ctx.fillRect(4,-9,7,18);
+  ctx.fillStyle='#111'; ctx.fillRect(-16,-14,10,4); ctx.fillRect(-16,10,10,4); ctx.fillRect(6,-14,10,4); ctx.fillRect(6,10,10,4);
+  if(police){ ctx.fillStyle=(Math.floor(tGlobal*4)%2)?'#ff2222':'#2255ff'; ctx.fillRect(-8,-6,8,12); }
+  else { ctx.fillStyle='rgba(255,255,255,.5)'; ctx.fillRect(18,-8,3,4); ctx.fillRect(18,4,3,4); }
+  ctx.restore();
+}
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+function render(){
+  // sky/ground
+  const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#0b0e1a'); g.addColorStop(1,'#131a35'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  const zx=camX-W/2, zy=camY-H/2;
+  ctx.save(); ctx.translate(-zx,-zy);
+  // grass/base + water edge
+  ctx.fillStyle='#101a2e'; ctx.fillRect(zx-50,zy-50,W+100,H+100);
+  ctx.fillStyle='#0a2a4a'; ctx.fillRect(WORLD,zy-100,800,H+200); // ocean right
+  ctx.fillStyle='rgba(34,211,238,.25)'; for(let i=0;i<8;i++) ctx.fillRect(WORLD+20, zy+i*160+(tGlobal*30%160), 120, 6);
+  // sand
+  ctx.fillStyle='#3a3a6e'; ctx.fillRect(WORLD-60,zy-100,60,H+200);
+  // roads
+  ctx.fillStyle='#232838';
+  for(let x=0;x<WORLD;x+=BLOCK) ctx.fillRect(x,zy-50,ROAD,H+100);
+  for(let y=0;y<WORLD;y+=BLOCK) ctx.fillRect(zx-50,y,W+100,ROAD);
+  // lane dashes
+  ctx.fillStyle='#ffd54a';
+  for(let x=0;x<WORLD;x+=BLOCK) for(let y=Math.floor(zy/40)*40;y<zy+H;y+=40) ctx.fillRect(x+ROAD/2-2,y,4,16);
+  for(let y=0;y<WORLD;y+=BLOCK) for(let x=Math.floor(zx/40)*40;x<zx+W;x+=40) ctx.fillRect(x,y+ROAD/2-2,16,4);
+  // parks
+  ctx.fillStyle='#123524'; for(let gx=0;gx<WORLD;gx+=BLOCK) for(let gy=0;gy<WORLD;gy+=BLOCK) if((gx+gy)%7===0) { ctx.fillRect(gx+ROAD+8,gy+ROAD+8,BLOCK-ROAD-16,BLOCK-ROAD-16); }
+  // buildings
+  for(const b of buildings){ if(b.x+b.w<zx||b.x>zx+W||b.y+b.h<zy||b.y>zy+H) continue;
+    ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(b.x+6,b.y+8,b.w,b.h);
+    ctx.fillStyle=b.c; ctx.fillRect(b.x,b.y,b.w,b.h);
+    ctx.strokeStyle=b.neon; ctx.globalAlpha=.8; ctx.lineWidth=2; ctx.strokeRect(b.x,b.y,b.w,b.h); ctx.globalAlpha=1;
+    ctx.fillStyle='rgba(255,255,180,.5)';
+    for(let wy=b.y+10;wy<b.y+b.h-8;wy+=16) for(let wx=b.x+8;wx<b.x+b.w-8;wx+=14) if((wx+wy)%3===0) ctx.fillRect(wx,wy,5,7);
+  }
+  // pickups
+  for(const pk of pickups){ if(pk.taken) continue; const bob=Math.sin(tGlobal*3+pk.ph)*4;
+    ctx.fillStyle='#052e16'; ctx.beginPath(); ctx.arc(pk.x,pk.y+bob,14,0,7); ctx.fill();
+    ctx.fillStyle='#5dff8d'; ctx.font='bold 16px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('$',pk.x,pk.y+bob);
+    ctx.strokeStyle='#5dff8d'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(pk.x,pk.y+bob,14+Math.sin(tGlobal*5)*2,0,7); ctx.stroke();
+  }
+  // peds
+  for(const p of peds){ ctx.fillStyle='#e2e8f0'; ctx.beginPath(); ctx.arc(p.x,p.y,5,0,7); ctx.fill(); ctx.fillStyle='#ff2d95'; ctx.fillRect(p.x-2,p.y-2,4,4); }
+  // cars
+  for(const c of cars) drawCar(c.x,c.y,c.a,c.color,false);
+  for(const c of cops) drawCar(c.x,c.y,c.a,'#1e3a8a',true);
+  // player
+  if(!player.inCar){ ctx.fillStyle='rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(player.x,player.y+8,10,4,0,0,7); ctx.fill();
+    ctx.save(); ctx.translate(player.x,player.y); ctx.rotate(player.a);
+    ctx.fillStyle='#22d3ee'; roundRect(-9,-7,18,14,5); ctx.fill(); ctx.fillStyle='#f8fafc'; ctx.beginPath(); ctx.arc(4,0,5,0,7); ctx.fill(); ctx.restore();
+  }
+  // sun glow
+  const sg=ctx.createRadialGradient(player.x,player.y,10,player.x,player.y,500); sg.addColorStop(0,'rgba(255,45,149,.08)'); sg.addColorStop(1,'rgba(255,45,149,0)'); ctx.fillStyle=sg; ctx.fillRect(player.x-500,player.y-500,1000,1000);
+  ctx.restore();
+  // vignette
+  const v=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)/3,W/2,H/2,Math.max(W,H)/1.2); v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.5)'); ctx.fillStyle=v; ctx.fillRect(0,0,W,H);
+  // minimap
+  mm.clearRect(0,0,150,150); mm.fillStyle='#0b0e1a'; mm.fillRect(0,0,150,150);
+  const s=150/WORLD;
+  mm.fillStyle='#232838'; for(let x=0;x<WORLD;x+=BLOCK) mm.fillRect(x*s,0,ROAD*s,150); for(let y=0;y<WORLD;y+=BLOCK) mm.fillRect(0,y*s,150,ROAD*s);
+  mm.fillStyle='#ff2d95'; for(const b of buildings) mm.fillRect(b.x*s,b.y*s,Math.max(1,b.w*s),Math.max(1,b.h*s));
+  mm.fillStyle='#5dff8d'; for(const pk of pickups) if(!pk.taken) mm.fillRect(pk.x*s-1,pk.y*s-1,3,3);
+  mm.fillStyle='#22d3ee'; for(const c of cars) mm.fillRect(c.x*s-1,c.y*s-1,3,3);
+  mm.fillStyle='#ff2222'; for(const c of cops) mm.fillRect(c.x*s-1.5,c.y*s-1.5,4,4);
+  mm.fillStyle='#fff'; mm.beginPath(); mm.arc(player.x*s,player.y*s,4,0,7); mm.fill(); mm.strokeStyle='#ff2d95'; mm.stroke();
+  // HUD
+  const stars='★'.repeat(Math.round(player.wanted))+'☆'.repeat(5-Math.round(player.wanted));
+  document.getElementById('wanted').textContent=stars;
+  document.getElementById('cash').textContent='$ '+Math.floor(player.cash).toLocaleString();
+  const spd=player.inCar?Math.abs(Math.round(player.inCar.speed*0.22)):0;
+  document.getElementById('speed').textContent=(player.inCar?('DRIVING • '+spd+' mph'):('ON FOOT • '+Math.round(Math.hypot(0,0))+' mph'));
+}
+
+let last=performance.now();
+function loop(now){ const dt=Math.min(0.05,(now-last)/1000); last=now; step(dt); render(); requestAnimationFrame(loop); }
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
