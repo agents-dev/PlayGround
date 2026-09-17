@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>StarCraft 3D — Pocket RTS</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>✦</text></svg>" />
+<link rel="stylesheet" href="styles.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app">
+  <canvas id="scene"></canvas>
+
+  <!-- top resource bar -->
+  <div id="topbar">
+    <div class="logo">✦ STARCRAFT <span>3D</span></div>
+    <div class="res"><span class="ico min"></span><b id="r-min">0</b><small>minerals</small></div>
+    <div class="res"><span class="ico gas"></span><b id="r-gas">0</b><small>vespene</small></div>
+    <div class="res"><span class="ico sup"></span><b id="r-sup">0/0</b><small>supply</small></div>
+    <div class="res"><span class="ico time"></span><b id="r-time">00:00</b></div>
+    <div id="objective">Destroy the red Command Center</div>
+    <div class="topbtns">
+      <button id="btn-help" title="Help (H)">?</button>
+      <button id="btn-cam" title="Reset camera (C)">⌖</button>
+      <button id="btn-mute" title="Mute (M)">♪</button>
+    </div>
+  </div>
+
+  <!-- selection drag box -->
+  <div id="dragbox" class="hidden"></div>
+
+  <!-- bottom HUD -->
+  <div id="hud">
+    <div id="portrait" class="panel">
+      <div id="portrait-face">🛸</div>
+      <div id="sel-info"><b>No selection</b><span>Drag to box-select. Right-click to order.</span></div>
+    </div>
+    <div id="commands" class="panel"></div>
+    <div id="minimap-wrap" class="panel">
+      <canvas id="minimap" width="180" height="180"></canvas>
+      <div id="hint">LMB select · RMB order · A attack · S stop · B build</div>
+    </div>
+  </div>
+
+  <!-- start overlay -->
+  <div id="menu">
+    <div class="menu-card">
+      <div class="kicker">POCKET RTS · THREE.JS · WEBGL</div>
+      <h1>STARCRAFT <em>3D</em></h1>
+      <p>Command the blue Terrans. Harvest minerals, raise a Barracks, mass Marines and raze the red Zerg base across the valley — before their swarm overruns you.</p>
+      <ul>
+        <li><b>Select</b> — left-click / drag box · <b>Order</b> — right-click</li>
+        <li><b>A</b> attack-move · <b>S</b> stop · <b>B / E / R</b> build menu</li>
+        <li><b>Camera</b> — arrow keys / edges / wheel / Z·X rotate</li>
+      </ul>
+      <button id="btn-start">Start Game</button>
+      <div class="note">No assets · all geometry + audio generated in code</div>
+    </div>
+  </div>
+
+  <!-- end overlay -->
+  <div id="endcard" class="hidden">
+    <div class="menu-card">
+      <h1 id="end-title">VICTORY</h1>
+      <p id="end-sub"></p>
+      <button id="btn-restart">Play Again</button>
+    </div>
+  </div>
+
+  <div id="toast-wrap"></div>
+  <div id="help" class="hidden">
+    <div class="menu-card small">
+      <h2>Field Manual</h2>
+      <p><b>Workers (SCV):</b> select → right-click blue crystals to mine, right-click Command Center to deliver. Press <b>B</b> then click ground to raise Supply / Barracks.</p>
+      <p><b>Marines:</b> train from Command Center (needs Barracks). <b>A + click</b> = attack-move. Right-click enemy = focus fire.</p>
+      <p><b>Economy:</b> SCV 50⛏ · Marine 50⛏ · Supply Depot 100⛏ (+8) · Barracks 150⛏ · Refinery-free gas trickles from geysers.</p>
+      <button id="btn-close-help">Close</button>
+    </div>
+  </div>
+</div>
+<script type="module" src="game.js"></script>
+</body>
+</html>
