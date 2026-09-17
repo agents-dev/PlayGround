@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:," />
+<title>League of Legends 3D — Ahri · Jinx · Yasuo</title>
+<style>
+  :root { --gold:#c89b3c; --gold2:#f0e6d2; --bg:#010a13; --panel:#091428; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--gold2); font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; overflow:hidden; }
+  #app { position:fixed; inset:0; }
+  canvas { display:block; }
+  .hud-top { position:fixed; top:0; left:0; right:0; display:flex; justify-content:space-between; align-items:center; padding:14px 18px; pointer-events:none; z-index:5; }
+  .title { pointer-events:auto; background:linear-gradient(180deg,rgba(9,20,40,.9),rgba(9,20,40,.65)); border:1px solid rgba(200,155,60,.55); border-radius:10px; padding:10px 14px; backdrop-filter:blur(8px); }
+  .title h1 { margin:0; font-size:18px; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); }
+  .title p { margin:4px 0 0; font-size:12.5px; opacity:.85; }
+  .stats { pointer-events:auto; background:rgba(9,20,40,.8); border:1px solid rgba(200,155,60,.35); border-radius:10px; padding:8px 12px; font-size:12px; min-width:190px; }
+  .champs { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); display:flex; gap:10px; z-index:5; }
+  .champs button { cursor:pointer; border:1px solid rgba(200,155,60,.6); background:rgba(9,20,40,.85); color:var(--gold2); padding:10px 16px; border-radius:999px; font-weight:700; letter-spacing:.04em; }
+  .champs button.active, .champs button:hover { background:var(--gold); color:#0a1428; }
+  .panel { position:fixed; left:18px; bottom:18px; z-index:5; max-width:340px; background:rgba(9,20,40,.86); border:1px solid rgba(200,155,60,.4); border-radius:12px; padding:12px 14px; font-size:13px; line-height:1.5; }
+  .panel h2 { margin:0 0 4px; color:var(--gold); font-size:16px; letter-spacing:.06em; }
+  .panel a { color:#9fd8ff; }
+  .controls-hint { position:fixed; right:18px; bottom:18px; z-index:5; font-size:12px; opacity:.8; background:rgba(9,20,40,.7); border:1px solid rgba(200,155,60,.3); padding:8px 10px; border-radius:8px; }
+  #loader { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px; background:radial-gradient(800px 500px at 50% 30%, #14315a 0%, #010a13 60%); z-index:10; transition:opacity .4s; }
+  .spinner { width:54px; height:54px; border-radius:50%; border:3px solid rgba(200,155,60,.25); border-top-color:var(--gold); animation:spin 1s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  @media (max-width:700px){ .panel{display:none;} .stats{display:none;} }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app"></div>
+<div id="loader"><div class="spinner"></div><div id="loadmsg">Summoning champions…</div></div>
+<div class="hud-top">
+  <div class="title"><h1>League of Legends · 3D</h1><p>Ahri — Jinx — Yasuo · Three.js + Sketchfab CC-BY fan models</p></div>
+  <div class="stats" id="stats">renderer: …</div>
+</div>
+<div class="champs">
+  <button data-champ="ahri" class="active">Ahri</button>
+  <button data-champ="jinx">Jinx</button>
+  <button data-champ="yasuo">Yasuo</button>
+  <button id="spinBtn">Auto-orbit: ON</button>
+</div>
+<div class="panel" id="info"></div>
+<div class="controls-hint">drag = orbit · wheel = zoom · right-drag = pan</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const CHAMPS = {
+  ahri: { file:'models/ahri.glb', name:'Ahri — K/DA', role:'Mid · Mage / Assassin', author:'1FENIL', uid:'e62a32f688364cd697c4d1e1bc101532', desc:'Nine-tailed fox mage. K/DA skin fan model, 6,680 faces, 2 PBR textures.' },
+  jinx: { file:'models/jinx.glb', name:'Jinx — LowPoly', role:'ADC · Marksman', author:'Mora', uid:'fd952fc46f9a454a8dd2bf728b5f1610', desc:'Loose-cannon with Fishbones + Pow-Pow. Unlit stylized textures, 9,228 faces.' },
+  yasuo: { file:'models/yasuo.glb', name:'Yasuo — 3rd Skin', role:'Mid/Top · Skirmisher', author:'Tiki', uid:'1fe98ff2e1244462ade9496848acc7ff', desc:'The Unforgiven swordsman. Single PBR material, 7,592 faces.' }
+};
+
+const app = document.getElementById('app');
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+app.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x010a13);
+scene.fog = new THREE.Fog(0x010a13, 18, 46);
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 200);
+camera.position.set(0, 2.9, 9.0);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 1.1, 0);
+controls.enableDamping = true;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.9;
+controls.maxPolarAngle = Math.PI * 0.495;
+controls.minDistance = 2.2; controls.maxDistance = 16;
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+scene.add(new THREE.HemisphereLight(0x9db8ff, 0x1a1206, 0.75));
+const key = new THREE.DirectionalLight(0xfff1d6, 2.2); key.position.set(5,8,4); scene.add(key);
+const rim = new THREE.DirectionalLight(0x0ac8b9, 1.4); rim.position.set(-6,4,-5); scene.add(rim);
+const goldPt = new THREE.PointLight(0xc89b3c, 12, 12); goldPt.position.set(0,2.6,0); scene.add(goldPt);
+
+// --- Summoner's Rift inspired arena ---
+const arena = new THREE.Group(); scene.add(arena);
+const stoneMat = new THREE.MeshStandardMaterial({ color:0x1c2b45, roughness:0.9, metalness:0.05 });
+const ground = new THREE.Mesh(new THREE.CylinderGeometry(7.5, 8.2, 0.3, 64), stoneMat);
+ground.position.y = -0.15; ground.receiveShadow = true; arena.add(ground);
+const ringGold = new THREE.Mesh(new THREE.TorusGeometry(3.2, 0.045, 16, 128), new THREE.MeshStandardMaterial({ color:0xc89b3c, emissive:0xc89b3c, emissiveIntensity:1.2, roughness:0.3, metalness:0.8 }));
+ringGold.rotation.x = Math.PI/2; ringGold.position.y = 0.02; arena.add(ringGold);
+const ringInner = new THREE.Mesh(new THREE.TorusGeometry(1.15, 0.03, 12, 96), new THREE.MeshStandardMaterial({ color:0x0ac8b9, emissive:0x0ac8b9, emissiveIntensity:1.4 }));
+ringInner.rotation.x = Math.PI/2; ringInner.position.y = 0.02; arena.add(ringInner);
+// lanes
+for (let i=0;i<3;i++){
+  const lane = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 14), new THREE.MeshStandardMaterial({ color:0x2a3f63, roughness:0.85, transparent:true, opacity:0.85 }));
+  lane.rotation.x = -Math.PI/2; lane.rotation.z = (i*Math.PI*2/3);
+  lane.position.y = 0.005; arena.add(lane);
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 14), new THREE.MeshBasicMaterial({ color: i===1?0xc89b3c:0x0ac8b9 }));
+  glow.rotation.x = -Math.PI/2; glow.rotation.z = (i*Math.PI*2/3);
+  glow.position.y = 0.01; arena.add(glow);
+}
+// podium discs
+function podium(x,z,color){
+  const g = new THREE.Group();
+  const d = new THREE.Mesh(new THREE.CylinderGeometry(1.05,1.2,0.18,48), new THREE.MeshStandardMaterial({color:0x0f2240,roughness:0.6,metalness:0.3}));
+  d.position.y=0.09; g.add(d);
+  const r = new THREE.Mesh(new THREE.TorusGeometry(1.05,0.025,10,64), new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:1.5}));
+  r.rotation.x=Math.PI/2; r.position.y=0.19; g.add(r);
+  g.position.set(x,0,z); arena.add(g); return g;
+}
+const podiums = { ahri: podium(-2.6,0.6,0xff6fd8), jinx: podium(0,-0.4,0x0ac8b9), yasuo: podium(2.6,0.6,0xc89b3c) };
+// floating shards / particles
+const pGeo = new THREE.BufferGeometry(); const N=350; const pos=new Float32Array(N*3);
+for(let i=0;i<N;i++){ const r=3+Math.random()*9, a=Math.random()*Math.PI*2; pos[i*3]=Math.cos(a)*r; pos[i*3+1]=Math.random()*6; pos[i*3+2]=Math.sin(a)*r; }
+pGeo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+const pts = new THREE.Points(pGeo, new THREE.PointsMaterial({ color:0xc89b3c, size:0.05, transparent:true, opacity:0.8 }));
+scene.add(pts);
+// sky glow sprite
+{
+  const c=document.createElement('canvas'); c.width=c.height=256; const g=c.getContext('2d');
+  const grd=g.createRadialGradient(128,128,10,128,128,128); grd.addColorStop(0,'rgba(20,60,120,0.9)'); grd.addColorStop(1,'rgba(1,10,19,0)');
+  g.fillStyle=grd; g.fillRect(0,0,256,256);
+  const tex=new THREE.CanvasTexture(c);
+  const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthWrite:false}));
+  spr.scale.set(40,22,1); spr.position.set(0,8,-14); scene.add(spr);
+}
+
+const loader = new GLTFLoader();
+const models = {}; let active='ahri';
+const loadmsg = document.getElementById('loadmsg');
+function fitAndPlace(gltf, targetH=1.9){
+  const obj = gltf.scene;
+  const box = new THREE.Box3().setFromObject(obj);
+  const size = box.getSize(new THREE.Vector3());
+  const s = targetH / Math.max(size.y, 0.001);
+  obj.scale.multiplyScalar(s);
+  const box2 = new THREE.Box3().setFromObject(obj);
+  obj.position.y -= box2.min.y; // feet on podium top
+  return obj;
+}
+async function loadAll(){
+  let i=0;
+  for (const k of Object.keys(CHAMPS)){
+    i++; loadmsg.textContent = `Summoning ${CHAMPS[k].name} (${i}/3)…`;
+    const gltf = await loader.loadAsync(CHAMPS[k].file);
+    const obj = fitAndPlace(gltf, k==='jinx'?1.75:1.9);
+    const holder = new THREE.Group(); holder.add(obj);
+    holder.position.copy(podiums[k].position); holder.position.y = 0.18;
+    // per-champ idle phase
+    holder.userData.phase = Math.random()*Math.PI*2;
+    scene.add(holder); models[k]=holder;
+    // face default camera (+z); jinx GLB is authored facing -z, flip it
+    if (k === 'jinx') holder.rotation.y = Math.PI;
+    else holder.lookAt(0,0.18,0);
+  }
+  document.getElementById('loader').style.opacity='0';
+  setTimeout(()=>document.getElementById('loader').remove(), 450);
+  setInfo(active); updateStats();
+}
+function setInfo(k){
+  active=k;
+  document.querySelectorAll('.champs button[data-champ]').forEach(b=>b.classList.toggle('active', b.dataset.champ===k));
+  const c=CHAMPS[k];
+  document.getElementById('info').innerHTML = `<h2>${c.name}</h2><div><b>${c.role}</b></div><div>${c.desc}</div><div style="margin-top:6px;opacity:.85">Sketchfab: ${c.author} · CC Attribution<br><a href="https://sketchfab.com/3d-models/none-${c.uid}" target="_blank" rel="noopener">source model ${c.uid.slice(0,8)}…</a> · fan art, not affiliated with Riot Games</div>`;
+  // focus camera target on champ
+  const p = podiums[k].position;
+  controls.target.set(p.x*0.25, 1.05, p.z*0.25);
+}
+function updateStats(){
+  let tris=0, meshes=0;
+  renderer.info.render.triangles; // flush
+  scene.traverse(o=>{ if(o.isMesh){ meshes++; const g=o.geometry; if(g.index) tris+=g.index.count/3; else tris+=g.attributes.position.count/3; }});
+  document.getElementById('stats').innerHTML = `meshes: ${meshes} · tris: ${Math.round(tris).toLocaleString()}<br>models: ahri.glb · jinx.glb · yasuo.glb<br>WebGL · ACES · RoomEnvironment`;
+}
+document.querySelectorAll('.champs button[data-champ]').forEach(b=>b.onclick=()=>setInfo(b.dataset.champ));
+const spinBtn=document.getElementById('spinBtn');
+spinBtn.onclick=()=>{ controls.autoRotate=!controls.autoRotate; spinBtn.textContent=`Auto-orbit: ${controls.autoRotate?'ON':'OFF'}`; };
+
+addEventListener('resize', ()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+
+const clock=new THREE.Clock();
+function tick(){
+  requestAnimationFrame(tick);
+  const t=clock.getElapsedTime();
+  pts.rotation.y = t*0.02;
+  ringGold.rotation.z = t*0.15;
+  for(const k of Object.keys(models)){
+    const h=models[k];
+    h.position.y = 0.18 + Math.sin(t*1.6 + h.userData.phase)*0.04;
+    if(k===active){ h.rotation.y += 0.004; }
+  }
+  goldPt.intensity = 10 + Math.sin(t*2.2)*2.5;
+  controls.update(); renderer.render(scene,camera);
+}
+loadAll().catch(e=>{ loadmsg.textContent='Failed to load: '+e.message; console.error(e); });
+tick();
+window.__lolReady = false;
+setTimeout(()=>{ window.__lolReady = !!models.ahri; }, 100);
+</script>
+</body>
+</html>
