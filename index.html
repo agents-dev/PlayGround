@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>StarCraft 3D — Pocket RTS</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>✦</text></svg>" />
+<link rel="stylesheet" href="styles.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app">
+  <canvas id="scene"></canvas>
+
+  <!-- top resource bar -->
+  <div id="topbar">
+    <div class="logo">✦ STARCRAFT <span>3D</span> <small class="vs">2v2</small></div>
+    <div id="topbar-play">
+      <div class="res"><span class="ico min"></span><b id="r-min">0</b><small>minerals</small></div>
+      <div class="res"><span class="ico gas"></span><b id="r-gas">0</b><small>vespene</small></div>
+      <div class="res"><span class="ico sup"></span><b id="r-sup">0/0</b><small>supply</small></div>
+    </div>
+    <div id="topbar-spec" class="hidden">
+      <div class="chip blue">🔵 <b id="c-player">0⛏ 0/0</b></div>
+      <div class="chip teal">🟢 <b id="c-ally">0⛏ 0/0</b></div>
+      <div class="chip red">🔴 <b id="c-enemy1">0⛏ 0/0</b></div>
+      <div class="chip orange">🟠 <b id="c-enemy2">0⛏ 0/0</b></div>
+    </div>
+    <div class="res"><span class="ico time"></span><b id="r-time">00:00</b></div>
+    <div id="objective">Destroy RED &amp; ORANGE bases — with your TEAL ally</div>
+    <div class="topbtns">
+      <button id="btn-speed" title="Game speed (F)">1x</button>
+      <button id="btn-follow" title="Follow battle (Space)">⚔</button>
+      <button id="btn-help" title="Help (H)">?</button>
+      <button id="btn-cam" title="Reset camera (C)">⌖</button>
+      <button id="btn-mute" title="Mute (M)">♪</button>
+    </div>
+  </div>
+
+  <!-- selection drag box -->
+  <div id="dragbox" class="hidden"></div>
+
+  <!-- bottom HUD -->
+  <div id="hud">
+    <div id="portrait" class="panel">
+      <div id="portrait-face">🛸</div>
+      <div id="sel-info"><b>No selection</b><span>Drag to box-select. Right-click to order.</span></div>
+    </div>
+    <div id="commands" class="panel"></div>
+    <div id="minimap-wrap" class="panel">
+      <canvas id="minimap" width="180" height="180"></canvas>
+      <div id="hint">LMB select · RMB order · A attack · S stop · B build</div>
+    </div>
+  </div>
+
+  <!-- start overlay -->
+  <div id="menu">
+    <div class="menu-card">
+      <div class="kicker">POCKET RTS · 2v2 · THREE.JS · WEBGL</div>
+      <h1>STARCRAFT <em>3D</em></h1>
+      <p>You are <b class="blue-t">🔵 Blue</b>, teamed with a <b class="teal-t">🟢 Teal AI ally</b> against the <b class="red-t">🔴 Red</b> and <b class="orange-t">🟠 Orange</b> bots. Harvest, tech up, combine armies — and raze both enemy bases.</p>
+      <ul>
+        <li><b>Select</b> — left-click / drag box · <b>Order</b> — right-click</li>
+        <li><b>A</b> attack-move · <b>S</b> stop · <b>B / E / R</b> build menu</li>
+        <li><b>Camera</b> — arrow keys / edges / wheel / Z·X rotate</li>
+      </ul>
+      <div class="menu-btns">
+        <button id="btn-play">Play 2v2</button>
+        <button id="btn-watch" class="ghost">Watch AI Battle</button>
+      </div>
+      <div class="note">Watch mode: all four commanders are bots · Space follows battle · 1-4 jump bases · F speed</div>
+    </div>
+  </div>
+
+  <!-- end overlay -->
+  <div id="endcard" class="hidden">
+    <div class="menu-card">
+      <h1 id="end-title">VICTORY</h1>
+      <p id="end-sub"></p>
+      <button id="btn-restart">Play Again</button>
+    </div>
+  </div>
+
+  <div id="toast-wrap"></div>
+  <div id="help" class="hidden">
+    <div class="menu-card small">
+      <h2>Field Manual</h2>
+      <p><b>2v2:</b> you are Blue (bottom-left). Teal is your AI ally — it expands, techs and attacks on its own, and sends help when your base burns. Red rushes early, Orange macros to a big army.</p>
+      <p><b>Workers (SCV):</b> select → right-click blue crystals to mine, right-click Command Center to deliver. <b>B</b> Depot · <b>E</b> Barracks · <b>R</b> Turret.</p>
+      <p><b>Marines:</b> train from Barracks. <b>A + click</b> = attack-move. Right-click enemy = focus fire. Idle troops hold ground but defend themselves.</p>
+      <p><b>Watch mode:</b> all four sides are bots. <b>Space</b> follow battle · <b>1-4</b> jump to a base · <b>F</b> game speed.</p>
+      <button id="btn-close-help">Close</button>
+    </div>
+  </div>
+</div>
+<script type="module" src="game.js"></script>
+</body>
+</html>
