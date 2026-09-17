@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>StarCraft: Nexus Wars — Tug of War Guide & Demo</title>
+<meta name="description" content="StarCraft II arcade classic Nexus Wars: how to play, economy, counters, walls, mid, and a live tug-of-war demo." />
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="./styles.css" />
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js", "three/": "./vendor/" } }
+</script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="logo" aria-hidden="true">◆</span> NEXUS WARS</div>
+  <nav class="nav">
+    <a href="#demo">Demo</a>
+    <a href="#how">How to play</a>
+    <a href="#economy">Economy</a>
+    <a href="#counters">Counters</a>
+    <a href="#tips">Pro tips</a>
+  </nav>
+  <div class="badge">SC2 Arcade · Tug of War · up to 4v4</div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="hero-text">
+      <h1>StarCraft: Nexus Wars</h1>
+      <p class="subtitle">Build spawners. Earn income. Break the enemy Nexus.</p>
+      <p>The legendary StarCraft II arcade tug-of-war: two teams of up to four build auto-spawning armies that march down two lanes. Out-eco, out-counter, and time one game-winning push.</p>
+      <div class="cta-row">
+        <a class="btn primary" href="#demo">Watch live battle demo</a>
+        <a class="btn" href="#how">Learn in 60 seconds</a>
+      </div>
+      <ul class="stats">
+        <li><strong>2</strong><span>lanes</span></li>
+        <li><strong>~20s</strong><span>income tick</span></li>
+        <li><strong>1</strong><span>nuke per player</span></li>
+        <li><strong>90</strong><span>supply / player</span></li>
+      </ul>
+    </div>
+    <div class="hero-board" id="demo" aria-label="Playable 3D tug of war">
+      <div class="board-head">
+        <span class="team blue" id="hp-blue">● Blue 100%</span>
+        <span id="battle-status" role="status">Loading 3D…</span>
+        <span class="team red" id="hp-red">Red 100% ●</span>
+      </div>
+      <div class="stage3d">
+        <canvas id="battle3d"></canvas>
+        <div class="g-overlay" id="g-overlay" style="display:none"><div id="g-overlay-text"></div></div>
+      </div>
+      <div class="hud">
+        <span><strong id="g-minerals">220</strong> minerals</span>
+        <span>income <strong id="g-income">10/10s</strong></span>
+        <span>supply <strong id="g-supply">0/90</strong></span>
+        <span>wave <strong id="g-wave">8s</strong></span>
+      </div>
+      <div class="board-controls">
+        <button id="btn-zealot" type="button">◆ Zealot 50</button>
+        <button id="btn-tank" type="button">▣ Tank 140</button>
+        <button id="btn-ling" type="button">▲ Swarm 90</button>
+        <button id="btn-pylon" type="button">⬢ Pylon 175</button>
+        <button id="btn-nuke" type="button">☢ Nuke (1)</button>
+        <button id="btn-reset" type="button">Reset</button>
+      </div>
+      <p class="hint"><span id="g-msg">You are Blue (left). Queue units — they spawn in synced waves every 8s. Income ticks every 10s (real map: 20s).</span> Drag to orbit · wheel to zoom.</p>
+    </div>
+  </section>
+
+  <section id="how" class="card-grid">
+    <article class="card">
+      <h2>How to win</h2>
+      <ol>
+        <li>Build unit spawners on your side of the map.</li>
+        <li>Spawners auto-send units down lanes toward the enemy Nexus.</li>
+        <li>Kills pay bounty minerals. Spend them on more spawners.</li>
+        <li>Destroy the enemy Nexus. Lose yours and the game ends.</li>
+      </ol>
+    </article>
+    <article class="card" id="economy">
+      <h2>Economy: kills + income</h2>
+      <p>Every ~20s you get income. Unit buildings give units <em>and</em> income. Pylons give only income — but more of it.</p>
+      <div class="calc">
+        <label>Pylons <input id="in-pylons" type="range" min="0" max="8" value="3" /> <output id="out-pylons">3</output></label>
+        <label>Unit buildings <input id="in-units" type="range" min="1" max="20" value="8" /> <output id="out-units">8</output></label>
+        <p>Income / tick: <strong id="income">~</strong></p>
+      </div>
+    </article>
+    <article class="card" id="counters">
+      <h2>Counter triangle</h2>
+      <table>
+        <thead><tr><th>If enemy spams…</th><th>You build…</th></tr></thead>
+        <tbody>
+          <tr><td>Marines / mass light</td><td>Archon, Tank, Baneling splash</td></tr>
+          <tr><td>Immortals / heavy ground</td><td>Warhound, air switch, mass Mutas</td></tr>
+          <tr><td>Carriers / air deathball</td><td>Thor, Viking, Scourge, Tempest</td></tr>
+          <tr><td>Tanks turtling mid</td><td>Vipers pull, Lurkers, air swing</td></tr>
+          <tr><td>Ultras meat wall</td><td>Immortals + H templar / air</td></tr>
+        </tbody>
+      </table>
+    </article>
+  </section>
+
+  <section id="tips" class="card wide">
+    <h2>Pro tips: wall · mid · sync</h2>
+    <div class="tips">
+      <div><h3>🧱 Wall one lane</h3><p>Stack buildings vertically to seal a lane so your whole ground army funnels into the other lane. Never leak ground from the walled lane.</p></div>
+      <div><h3>↔ Mid reinforcements</h3><p>Build on the center line and rally to either lane. Best for air (Carriers, Mutas, Brood Lords) and heavy ground (Tanks, Ultras, Archons).</p></div>
+      <div><h3>🌊 Sync waves</h3><p>Cancel production with ESC so units spawn together on the 10s timer. One big wave beats a trickle — except casters (Infestor, Viper, Sentry).</p></div>
+      <div><h3>☢ Save your nuke</h3><p>One nuke per game, defensive range only. Use it to stop a Nexus-threatening push, not to pad kills.</p></div>
+    </div>
+  </section>
+
+  <section class="card wide races">
+    <h2>Pick a race fantasy</h2>
+    <div class="race-tabs" role="tablist">
+      <button class="active" data-race="protoss" role="tab">Protoss</button>
+      <button data-race="terran" role="tab">Terran</button>
+      <button data-race="zerg" role="tab">Zerg</button>
+    </div>
+    <p id="race-text">Protoss: Immortals early, Archons mid, Carrier + Mothership Core deathball late. Upgrade shields first.</p>
+  </section>
+
+  <footer>
+    <p>Fan-made demo page for the StarCraft II arcade map “Nexus Wars” (original by Lilman). Not affiliated with Blizzard. Built as a static site — no build step.</p>
+    <p id="render-check">Render check: HTML + CSS + JS loaded ✓ <span id="clock"></span></p>
+  </footer>
+</main>
+<script src="./app.js"></script>
+<script type="module" src="./game3d.js"></script>
+</body>
+</html>
