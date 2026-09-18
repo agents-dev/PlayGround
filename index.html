@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Minecraft 3D — Voxel Builder</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%236abe30'/><rect y='10' width='16' height='6' fill='%238a5f3c'/></svg>" />
+<link rel="stylesheet" href="styles.css" />
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<div id="app">
+  <canvas id="game"></canvas>
+  <div id="vignette"></div>
+  <div id="crosshair">+</div>
+  <div id="hud-top">
+    <div id="fps">60 FPS</div>
+    <div id="coords">0, 0, 0</div>
+    <div id="mode-badge">WALK</div>
+  </div>
+  <div id="hotbar"></div>
+  <div id="toast"></div>
+  <div id="menu">
+    <div class="menu-card">
+      <div class="logo"><span class="logo-a">MINECRAFT</span> <span class="logo-b">3D</span></div>
+      <p class="tagline">Infinite-style voxel sandbox · build, mine &amp; explore</p>
+      <button id="play-btn" aria-label="Play">▶ &nbsp;Play</button>
+      <div class="menu-row">
+        <label>Seed <input id="seed-input" type="number" value="1337" /></label>
+        <button id="regen-btn" title="Generate new world">🎲 New World</button>
+      </div>
+      <div class="help">
+        <div><b>WASD</b> move · <b>Mouse</b> look · <b>Click</b> mine / place</div>
+        <div><b>Space</b> jump · <b>F</b> fly · <b>1–9</b> blocks · <b>Right-click</b> place</div>
+      </div>
+    </div>
+  </div>
+  <div id="pause-tip" class="hidden">Paused — click to resume · <b>F</b> fly · <b>Space</b>/<b>Shift</b> up/down</div>
+  <div id="touch-ui">
+    <div id="stick"><div id="stick-knob"></div></div>
+    <div id="touch-btns">
+      <button data-act="jump">⤒</button>
+      <button data-act="break">⛏</button>
+      <button data-act="place">▣</button>
+      <button data-act="fly">🕊</button>
+    </div>
+  </div>
+  <div id="scene-ready" data-ready="false"></div>
+</div>
+<script type="module" src="main.js"></script>
+</body>
+</html>
