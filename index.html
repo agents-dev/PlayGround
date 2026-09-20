@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Warcraft 3D — Tiny RTS</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>⚔️</text></svg>">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#0a0f0a; font-family:'Segoe UI',Trebuchet MS,Arial,sans-serif; user-select:none; }
+  #app { position:fixed; inset:0; }
+  canvas.game { display:block; }
+  #hud-top { position:fixed; top:0; left:0; right:0; height:44px; display:flex; align-items:center; gap:18px; padding:0 14px;
+    background:linear-gradient(180deg,rgba(20,16,8,.95),rgba(20,16,8,.75)); color:#ffd77a; z-index:20; border-bottom:2px solid #6b4d1f; font-size:15px; }
+  #hud-top .logo { font-weight:900; letter-spacing:1px; color:#ffcf4d; text-shadow:0 2px 0 #000; font-size:17px; }
+  #hud-top .res { display:flex; align-items:center; gap:6px; background:rgba(0,0,0,.45); padding:4px 10px; border-radius:8px; border:1px solid #6b4d1f; }
+  #hud-top .res b { color:#fff; min-width:40px; text-align:right; }
+  #timer { margin-left:auto; color:#9fe8a8; font-variant-numeric:tabular-nums; }
+  #minimap-wrap { position:fixed; top:52px; right:10px; z-index:20; border:2px solid #6b4d1f; border-radius:6px; overflow:hidden; background:#000; box-shadow:0 4px 16px rgba(0,0,0,.6); }
+  #minimap { display:block; width:180px; height:180px; }
+  #minimap-label { text-align:center; font-size:11px; color:#ffd77a; background:rgba(20,16,8,.9); padding:2px; letter-spacing:1px; }
+  #objective { position:fixed; top:52px; left:10px; z-index:20; max-width:320px; background:rgba(10,10,8,.78); border:1px solid #6b4d1f; border-radius:8px; color:#ffe9b0; padding:8px 10px; font-size:12.5px; line-height:1.45; }
+  #objective b { color:#ffcf4d; }
+  #command-card { position:fixed; right:10px; bottom:10px; z-index:20; width:240px; background:linear-gradient(180deg,rgba(30,24,12,.96),rgba(15,12,6,.96)); border:2px solid #6b4d1f; border-radius:10px; padding:10px; color:#ffe9b0; }
+  #command-card h3 { font-size:13px; color:#ffcf4d; margin-bottom:6px; letter-spacing:.5px; }
+  #sel-info { font-size:12px; min-height:34px; margin-bottom:8px; color:#fff; }
+  #sel-info .hpbar { height:8px; background:#300; border-radius:4px; overflow:hidden; margin-top:4px; border:1px solid #000; }
+  #sel-info .hpbar i { display:block; height:100%; background:linear-gradient(90deg,#37d837,#9dff57); }
+  #buttons { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  button.cmd { background:linear-gradient(180deg,#4a6a3a,#2c4423); border:1px solid #8fc07a; color:#fff; border-radius:6px; padding:8px 6px; font-size:12px; cursor:pointer; line-height:1.2; }
+  button.cmd:hover:not(:disabled) { filter:brightness(1.25); }
+  button.cmd:disabled { opacity:.4; cursor:default; }
+  button.cmd.build { background:linear-gradient(180deg,#6a5a2a,#443a18); border-color:#ffcf4d; }
+  button.cmd.danger { background:linear-gradient(180deg,#7a2a2a,#4a1515); border-color:#ff8a8a; }
+  #toast { position:fixed; bottom:120px; left:50%; transform:translateX(-50%); z-index:30; background:rgba(0,0,0,.8); color:#ffe9b0; border:1px solid #ffcf4d; padding:8px 16px; border-radius:20px; font-size:13px; opacity:0; transition:opacity .3s; pointer-events:none; }
+  #selection-box { position:fixed; border:1px solid #7CFC00; background:rgba(124,252,0,.15); z-index:15; display:none; pointer-events:none; }
+  #hint { position:fixed; bottom:10px; left:10px; z-index:20; color:#cfe6b0; font-size:12px; background:rgba(0,0,0,.6); padding:8px 10px; border-radius:8px; border:1px solid #3a4a2a; max-width:380px; line-height:1.5; }
+  #menu { position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; background:radial-gradient(ellipse at center,rgba(20,30,10,.55),rgba(0,0,0,.88)); }
+  #menu-card { width:min(560px,92vw); background:linear-gradient(180deg,#2a2113,#141007); border:3px solid #a8842c; border-radius:16px; padding:28px 28px 22px; text-align:center; color:#ffe9b0; box-shadow:0 20px 80px rgba(0,0,0,.8); }
+  #menu-card h1 { font-size:44px; letter-spacing:2px; color:#ffcf4d; text-shadow:0 3px 0 #000,0 0 24px rgba(255,180,0,.5); font-weight:900; }
+  #menu-card h1 span { color:#ff6a3d; }
+  #menu-card h2 { font-size:14px; letter-spacing:4px; color:#9fe8a8; margin:4px 0 12px; }
+  #menu-card p { font-size:13.5px; line-height:1.6; color:#f5e6bd; }
+  #menu-card .keys { display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; text-align:left; font-size:12.5px; margin:12px 0; background:rgba(0,0,0,.35); padding:10px 12px; border-radius:8px; }
+  #btn-start { margin-top:10px; font-size:20px; font-weight:800; padding:12px 44px; border-radius:12px; border:2px solid #ffe08a; background:linear-gradient(180deg,#7ab648,#3d6b22); color:#fff; cursor:pointer; text-shadow:0 2px 0 #000; box-shadow:0 6px 24px rgba(122,182,72,.4); }
+  #btn-start:hover { filter:brightness(1.15); transform:translateY(-1px); }
+  #btn-start::before { content:"▶ "; }
+  #end { position:fixed; inset:0; z-index:60; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.7); }
+  #end-card { background:#141007; border:3px solid #a8842c; border-radius:14px; padding:30px 40px; text-align:center; color:#ffe9b0; }
+  #end-card h1 { font-size:40px; margin-bottom:8px; }
+  #btn-restart { margin-top:12px; font-size:16px; padding:10px 28px; border-radius:8px; border:1px solid #ffe08a; background:#3d6b22; color:#fff; cursor:pointer; }
+  #build-hint { position:fixed; top:52px; left:50%; transform:translateX(-50%); z-index:25; background:rgba(120,20,20,.9); color:#fff; padding:6px 14px; border-radius:16px; font-size:13px; display:none; border:1px solid #ff8a8a; }
+  @media (max-width:760px){ #objective,#hint{ display:none; } #minimap{ width:120px; height:120px; } #command-card{ width:200px; } }
+</style>
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<div id="app"></div>
+<div id="hud-top">
+  <div class="logo">⚔️ WARCRAFT 3D</div>
+  <div class="res">🪙 <b id="r-gold">0</b><span>Gold</span></div>
+  <div class="res">🪵 <b id="r-wood">0</b><span>Wood</span></div>
+  <div class="res">🍖 <b id="r-food">0/0</b><span>Supply</span></div>
+  <div class="res">⚔️ <b id="r-army">0</b><span>Army</span></div>
+  <div id="timer">00:00</div>
+</div>
+<div id="minimap-wrap"><canvas id="minimap" width="180" height="180"></canvas><div id="minimap-label">MINIMAP — click to jump</div></div>
+<div id="objective"><b>⚔ QUEST — Destroy the Orc Base</b><br><span id="obj-text">Train peasants to harvest gold &amp; wood. Build a Barracks, raise Footmen, and raze the red Orc Hall to the north-east. Survive the counter-attacks!</span></div>
+<div id="command-card">
+  <h3 id="sel-title">No selection</h3>
+  <div id="sel-info">Drag-select units. Right-click to move / attack / harvest.</div>
+  <div id="buttons"></div>
+</div>
+<div id="hint">🖱 <b>Left-drag</b>: select &nbsp;•&nbsp; <b>Right-click</b>: move / attack / harvest &nbsp;•&nbsp; <b>WASD / arrows</b>: camera &nbsp;•&nbsp; <b>Wheel</b>: zoom &nbsp;•&nbsp; <b>A</b>: attack-move &nbsp;•&nbsp; <b>S</b>: stop &nbsp;•&nbsp; <b>Space</b>: jump to battle</div>
+<div id="toast"></div>
+<div id="selection-box"></div>
+<div id="build-hint">🏗 Placement mode — LEFT-CLICK ground to place, ESC to cancel</div>
+<div id="menu">
+  <div id="menu-card">
+    <h1>WAR<span>CRAFT</span> 3D</h1>
+    <h2>⚔ TINY REAL-TIME STRATEGY ⚔</h2>
+    <p>Humans (blue) vs Orcs (red). Harvest <b>🪙 gold</b> and <b>🪵 wood</b>, raise an army of <b>Footmen</b>, and destroy the <b>Orc Town Hall</b>. Enemy waves strike back — build towers, hold the line!</p>
+    <div class="keys">
+      <div>🖱 Left-drag — select army</div><div>🖱 Right-click — order</div>
+      <div>⌨ WASD — move camera</div><div>🔍 Wheel — zoom</div>
+      <div>🅰 A + click — attack move</div><div>🅂 S — stop selected</div>
+    </div>
+    <button id="btn-start">Start Game</button>
+    <p style="margin-top:10px;font-size:12px;opacity:.8">3D by Three.js • no downloads • works on desktop + mobile (tap to select, double-tap to order)</p>
+  </div>
+</div>
+<div id="end"><div id="end-card"><h1 id="end-title">VICTORY!</h1><p id="end-sub"></p><br><button id="btn-restart">↻ Play Again</button></div></div>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ============ UTIL / AUDIO ============
+const $ = id => document.getElementById(id);
+let audioCtx = null;
+function beep(freq=440, dur=0.08, type='square', vol=0.12){
+  try{
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type=type; o.frequency.value=freq; g.gain.value=vol;
+    o.connect(g); g.connect(audioCtx.destination); o.start();
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+dur);
+    o.stop(audioCtx.currentTime+dur);
+  }catch(e){}
+}
+const sfx = {
+  select(){ beep(660,0.06,'square',0.07); },
+  order(){ beep(520,0.07,'square',0.09); },
+  error(){ beep(160,0.18,'sawtooth',0.12); },
+  train(){ beep(880,0.12,'triangle',0.12); setTimeout(()=>beep(1174,0.12,'triangle',0.1),120); },
+  build(){ beep(220,0.1,'square',0.1); setTimeout(()=>beep(330,0.12,'square',0.1),110); },
+  sword(){ beep(200+Math.random()*300,0.06,'sawtooth',0.08); },
+  coin(){ beep(1320,0.07,'sine',0.1); },
+  win(){ [523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,0.25,'triangle',0.14),i*180)); },
+  lose(){ [400,340,280,180].forEach((f,i)=>setTimeout(()=>beep(f,0.3,'sawtooth',0.12),i*220)); }
+};
+let toastT=null;
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.style.opacity=1; clearTimeout(toastT); toastT=setTimeout(()=>t.style.opacity=0,2200); }
+
+// ============ GAME STATE ============
+const MAP = 84; // playable half-size ~ +/-42
+const G = {
+  started:false, over:false, time:0, gold:600, wood:350,
+  units:[], buildings:[], trees:[], mines:[],
+  selected:new Set(), idc:1,
+  camMode:{x:0,z:10,dist:46,angle:0.9},
+  placeMode:null, attackMove:false,
+  enemyTimer:50, wave:0, kills:0, harvested:0,
+  trainQueues:new Map(),
+};
+function supplyUsed(){ let u=0; for(const un of G.units){ if(un.team===0) u += (un.type==='peasant'?1:2); } for(const q of G.trainQueues.values()){ for(const it of q) u += (it.type==='peasant'?1:2);} return u; }
+function supplyMax(){ let m=11; for(const b of G.buildings){ if(b.team===0 && b.hp>0){ if(b.type==='townHall') m+=8; if(b.type==='farm') m+=6; } } return m; }
+
+// ============ THREE SETUP ============
+let scene, camera, renderer, raycaster, groundMesh, ghostMesh=null;
+const mouseNDC = new THREE.Vector2();
+const app = $('app');
+scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87b5e0);
+scene.fog = new THREE.Fog(0x87b5e0, 90, 220);
+camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.5, 600);
+renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.domElement.className='game';
+app.appendChild(renderer.domElement);
+raycaster = new THREE.Raycaster();
+
+scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x3a5a2a, 0.95));
+const sun = new THREE.DirectionalLight(0xfff2cc, 1.6);
+sun.position.set(60,90,30); sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.left=-70; sun.shadow.camera.right=70; sun.shadow.camera.top=70; sun.shadow.camera.bottom=-70;
+scene.add(sun);
+
+// ---- terrain ----
+function makeGround(){
+  const geo = new THREE.PlaneGeometry(MAP+40, MAP+40, 48, 48);
+  geo.rotateX(-Math.PI/2);
+  const pos = geo.attributes.position;
+  const colors = [];
+  const c1 = new THREE.Color(0x4a8f3c), c2 = new THREE.Color(0x5da244), c3 = new THREE.Color(0x3d7a33);
+  for(let i=0;i<pos.count;i++){
+    const x=pos.getX(i), z=pos.getZ(i);
+    let h = Math.sin(x*0.15)*Math.cos(z*0.13)*0.7 + Math.sin(x*0.05+z*0.07)*0.9;
+    const edge = Math.max(Math.abs(x),Math.abs(z));
+    if(edge>MAP/2) h -= (edge-MAP/2)*0.55; // water rim
+    pos.setY(i,h);
+    const n = (Math.sin(x*12.9898+z*78.233)*43758.5453)%1;
+    const pick = Math.abs(n);
+    const c = pick<0.45?c1:(pick<0.8?c2:c3);
+    colors.push(c.r,c.g,c.b);
+  }
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors,3));
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshStandardMaterial({vertexColors:true, roughness:1});
+  groundMesh = new THREE.Mesh(geo, mat);
+  groundMesh.receiveShadow = true;
+  scene.add(groundMesh);
+  // water plane
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(400,400), new THREE.MeshStandardMaterial({color:0x2f6fb0, transparent:true, opacity:0.9, roughness:0.3, metalness:0.2}));
+  water.rotation.x=-Math.PI/2; water.position.y=-2.6; scene.add(water);
+  // grid paths: dirt roads between bases
+  const roadMat = new THREE.MeshStandardMaterial({color:0x9a7d4f, roughness:1});
+  const road = new THREE.Mesh(new THREE.PlaneGeometry(6,110), roadMat);
+  road.rotation.x=-Math.PI/2; road.rotation.z=Math.PI/4; road.position.y=0.15; road.receiveShadow=true; scene.add(road);
+}
+function groundH(x,z){
+  return Math.sin(x*0.15)*Math.cos(z*0.13)*0.7 + Math.sin(x*0.05+z*0.07)*0.9;
+}
+
+// ---- decorative + resources ----
+function addTree(x,z){
+  const g = new THREE.Group();
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.5,2.2,7), new THREE.MeshStandardMaterial({color:0x6b4a2a, roughness:1}));
+  trunk.position.y=1.1; trunk.castShadow=true; g.add(trunk);
+  const greens=[0x2d6a2d,0x35923a,0x256b28];
+  for(let i=0;i<3;i++){
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(2.1-i*0.45,2.2,8), new THREE.MeshStandardMaterial({color:greens[i%3], roughness:1}));
+    cone.position.y=2.6+i*1.4; cone.castShadow=true; g.add(cone);
+  }
+  g.position.set(x,groundH(x,z),z);
+  const s=0.8+Math.random()*0.7; g.scale.setScalar(s);
+  g.rotation.y=Math.random()*6.28;
+  scene.add(g);
+  G.trees.push({mesh:g,x,z,hp:120,wood:120});
+}
+function addGoldMine(x,z){
+  const g=new THREE.Group();
+  const rockMat=new THREE.MeshStandardMaterial({color:0x7a7a80,roughness:.9});
+  const goldMat=new THREE.MeshStandardMaterial({color:0xffc93d,roughness:.35,metalness:.7,emissive:0x664400,emissiveIntensity:.35});
+  for(let i=0;i<5;i++){
+    const r=new THREE.Mesh(new THREE.DodecahedronGeometry(0.9+Math.random()*0.7,0), i%2?goldMat:rockMat);
+    r.position.set((Math.random()-0.5)*4,0.6+Math.random()*0.8,(Math.random()-0.5)*4);
+    r.castShadow=true; g.add(r);
+  }
+  const sign=new THREE.Mesh(new THREE.BoxGeometry(3.4,0.7,0.3), new THREE.MeshStandardMaterial({color:0x5a3d1a}));
+  sign.position.y=2.6; g.add(sign);
+  g.position.set(x,groundH(x,z),z); scene.add(g);
+  G.mines.push({mesh:g,x,z,gold:2500});
+}
+function scatter(){
+  // forest clusters avoiding bases & road
+  let placed=0, guard=0;
+  while(placed<90 && guard++<900){
+    const x=(Math.random()-0.5)*(MAP-8), z=(Math.random()-0.5)*(MAP-8);
+    if(Math.hypot(x+24,z-20)<12) continue; // player base
+    if(Math.hypot(x-24,z+20)<12) continue; // enemy base
+    if(Math.abs(x-z)<5) continue; // road
+    if(G.mines.some(m=>Math.hypot(m.x-x,m.z-z)<6)) continue;
+    addTree(x,z); placed++;
+  }
+  // rocks
+  for(let i=0;i<14;i++){
+    const x=(Math.random()-0.5)*(MAP-6), z=(Math.random()-0.5)*(MAP-6);
+    if(Math.hypot(x+24,z-20)<13||Math.hypot(x-24,z+20)<13) continue;
+    const r=new THREE.Mesh(new THREE.DodecahedronGeometry(0.8+Math.random()*1.2,0), new THREE.MeshStandardMaterial({color:0x8a8d90,roughness:1}));
+    r.position.set(x,groundH(x,z)+0.5,z); r.castShadow=true; scene.add(r);
+  }
+}
+
+// ============ ENTITY FACTORIES ============
+function teamColor(t){ return t===0?0x2a7bff:0xff3b30; }
+function mat(color){ return new THREE.MeshStandardMaterial({color, roughness:0.8}); }
+function makeHealthBar(w){
+  const grp=new THREE.Group();
+  const bg=new THREE.Mesh(new THREE.PlaneGeometry(w,0.32), new THREE.MeshBasicMaterial({color:0x111111, depthTest:false, transparent:true, opacity:0.85}));
+  const fg=new THREE.Mesh(new THREE.PlaneGeometry(w,0.22), new THREE.MeshBasicMaterial({color:0x37e037, depthTest:false}));
+  fg.position.z=0.01;
+  grp.add(bg); grp.add(fg); grp.userData={bg,fg,w};
+  return grp;
+}
+function setBar(ent){
+  const {fg,w}=ent.bar.userData;
+  const f=Math.max(0,ent.hp/ent.maxHp);
+  fg.scale.x=f; fg.position.x=-(w*(1-f))/2;
+  fg.material.color.set(f>0.55?0x37e037:(f>0.25?0xffb300:0xff2222));
+  ent.bar.visible = ent.hp<ent.maxHp;
+}
+function makeHumanoid(bodyC, team){
+  const g=new THREE.Group();
+  const trim=mat(teamColor(team));
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.55,1.15,8), mat(bodyC)); body.position.y=1.05; body.castShadow=true; g.add(body);
+  const belt=new THREE.Mesh(new THREE.CylinderGeometry(0.56,0.56,0.18,8), trim); belt.position.y=0.75; g.add(belt);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.34,10,8), mat(0xf2c89b)); head.position.y=1.95; head.castShadow=true; g.add(head);
+  const helm=new THREE.Mesh(new THREE.ConeGeometry(0.4,0.5,8), trim); helm.position.y=2.3; g.add(helm);
+  const armL=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.9,0.22), mat(bodyC)); armL.position.set(-0.62,1.15,0); g.add(armL);
+  const armR=armL.clone(); armR.position.x=0.62; g.add(armR);
+  const legL=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.6,0.26), mat(0x3a2e22)); legL.position.set(-0.2,0.3,0); g.add(legL);
+  const legR=legL.clone(); legR.position.x=0.2; g.add(legR);
+  g.userData.armR=armR; g.userData.armL=armL;
+  return g;
+}
+function spawnUnit(type, team, x, z){
+  let mesh, hp, speed, dmg, range, sight, cost;
+  if(type==='peasant'){ mesh=makeHumanoid(team===0?0x8a6f4d:0x6f7a4d,team); const tool=new THREE.Mesh(new THREE.BoxGeometry(0.12,1.1,0.12), mat(0x7a5230)); tool.position.set(0.85,1.1,0.2); tool.rotation.z=0.5; mesh.add(tool); hp=120; speed=7; dmg=7; range=1.8; sight=14;
+  } else if(type==='footman'){ mesh=makeHumanoid(0x9aa7b8,team); const sw=new THREE.Mesh(new THREE.BoxGeometry(0.14,1.3,0.3), new THREE.MeshStandardMaterial({color:0xd7dee8,metalness:.7,roughness:.3})); sw.position.set(0.9,1.2,0.2); mesh.add(sw); const sh=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.9,0.6), mat(teamColor(team))); sh.position.set(-0.85,1.1,0); mesh.add(sh); hp=280; speed=6.4; dmg=16; range=2.2; sight=16;
+  } else { mesh=makeHumanoid(0x4d7a3a,team); mesh.scale.set(1.15,1.15,1.15); const axe=new THREE.Mesh(new THREE.BoxGeometry(0.16,1.2,0.16), mat(0x5a3d22)); axe.position.set(0.9,1.3,0); mesh.add(axe); const blade=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.35,0.08), mat(0xcccccc)); blade.position.set(0.9,1.9,0); mesh.add(blade); hp=300; speed=6.8; dmg=18; range=2.2; sight=17; type='grunt'; }
+  mesh.position.set(x,groundH(x,z),z);
+  scene.add(mesh);
+  const bar=makeHealthBar(1.8); bar.position.y=2.9; mesh.add(bar);
+  // team ring
+  const ring=new THREE.Mesh(new THREE.RingGeometry(0.7,0.9,20), new THREE.MeshBasicMaterial({color:teamColor(team), transparent:true, opacity:0.9, side:THREE.DoubleSide}));
+  ring.rotation.x=-Math.PI/2; ring.position.y=0.12; mesh.add(ring);
+  const u={id:G.idc++, kind:'unit', type, team, mesh, bar, ring, x, z, hp, maxHp:hp, speed, dmg, range, sight, cooldown:0, tx:x, tz:z, target:null, task:'idle', harvestT:0, carry:null, carryAmt:0, walkPh:Math.random()*6, selRing:ring};
+  mesh.userData.ent=u;
+  setBar(u);
+  G.units.push(u);
+  return u;
+}
+function makeBuildingMesh(type, team){
+  const g=new THREE.Group(); const tc=teamColor(team);
+  if(type==='townHall'){
+    const base=new THREE.Mesh(new THREE.BoxGeometry(7,3,7), mat(team===0?0xd9c9a8:0xc9a89a)); base.position.y=1.5; base.castShadow=true; base.receiveShadow=true; g.add(base);
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(5.6,3,4), mat(team===0?0x2a5fa8:0xa82a2a)); roof.position.y=4.5; roof.rotation.y=Math.PI/4; roof.castShadow=true; g.add(roof);
+    const door=new THREE.Mesh(new THREE.BoxGeometry(1.8,2.2,0.3), mat(0x4a2e14)); door.position.set(0,1.1,3.55); g.add(door);
+    const flag=new THREE.Mesh(new THREE.BoxGeometry(0.12,3,0.12), mat(0x333333)); flag.position.set(2.5,6,0); g.add(flag);
+    const cloth=new THREE.Mesh(new THREE.PlaneGeometry(1.6,1), new THREE.MeshBasicMaterial({color:tc, side:THREE.DoubleSide})); cloth.position.set(3.3,6.8,0); g.add(cloth); g.userData.cloth=cloth;
+    for(const [sx,sz] of [[-2.8,-2.8],[2.8,-2.8],[-2.8,2.8],[2.8,2.8]]){ const tw=new THREE.Mesh(new THREE.BoxGeometry(1,4.5,1), mat(0x8a7a5a)); tw.position.set(sx,2.2,sz); tw.castShadow=true; g.add(tw); }
+  } else if(type==='barracks'){
+    const base=new THREE.Mesh(new THREE.BoxGeometry(6,2.4,5), mat(0xb09a72)); base.position.y=1.2; base.castShadow=true; g.add(base);
+    const roof=new THREE.Mesh(new THREE.CylinderGeometry(0.1,3.6,2.2,4,1), mat(team===0?0x3a6ea8:0xa83a3a)); roof.position.y=3.4; roof.rotation.y=Math.PI/4; g.add(roof);
+    const door=new THREE.Mesh(new THREE.BoxGeometry(1.6,1.8,0.3), mat(0x332211)); door.position.set(0,0.9,2.55); g.add(door);
+  } else if(type==='farm'){
+    const base=new THREE.Mesh(new THREE.BoxGeometry(4,1.8,3.4), mat(0xc9a878)); base.position.y=0.9; base.castShadow=true; g.add(base);
+    const roof=new THREE.Mesh(new THREE.CylinderGeometry(0.05,2.8,1.8,4,1), mat(0x7a4a2a)); roof.position.y=2.7; roof.rotation.y=Math.PI/4; g.add(roof);
+  } else { // tower
+    const base=new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.6,5,8), mat(0x9a9a9a)); base.position.y=2.5; base.castShadow=true; g.add(base);
+    const top=new THREE.Mesh(new THREE.CylinderGeometry(1.7,1.4,1.2,8), mat(team===0?0x2a5fa8:0xa82a2a)); top.position.y=5.5; g.add(top);
+    const crystal=new THREE.Mesh(new THREE.OctahedronGeometry(0.5), new THREE.MeshStandardMaterial({color:0x88ddff, emissive:0x2288aa, emissiveIntensity:0.8})); crystal.position.y=6.6; g.add(crystal); g.userData.crystal=crystal;
+  }
+  const trim=new THREE.Mesh(new THREE.BoxGeometry(7.4,0.4,7.4), mat(tc)); trim.position.y=0.2; g.add(trim);
+  return g;
+}
+const BSTAT={ townHall:{hp:1500,sight:20}, barracks:{hp:900,sight:16}, farm:{hp:500,sight:12}, tower:{hp:700,range:14,dmg:26,sight:18} };
+function spawnBuilding(type, team, x, z, instant=true){
+  const mesh=makeBuildingMesh(type,team);
+  mesh.position.set(x,groundH(x,z),z); scene.add(mesh);
+  const st=BSTAT[type];
+  const bar=makeHealthBar(5); bar.position.y=(type==='townHall'?8.4:(type==='tower'?8:6)); mesh.add(bar);
+  const b={id:G.idc++, kind:'building', type, team, mesh, bar, x, z, hp:instant?st.hp:80, maxHp:st.hp, sight:st.sight||16, range:st.range||0, dmg:st.dmg||0, cooldown:0, building:!instant, buildHp:0, rally:{x:x+6,z:z+6}};
+  mesh.userData.ent=b; setBar(b); G.buildings.push(b);
+  return b;
+}
+
+// ============ INITIAL WORLD ============
+function buildWorld(){
+  makeGround();
+  addGoldMine(-16,12); addGoldMine(-30,26); addGoldMine(16,-12); addGoldMine(30,-26);
+  scatter();
+  // player base SW
+  spawnBuilding('townHall',0,-24,20);
+  spawnBuilding('farm',0,-17,22);
+  spawnBuilding('tower',0,-28,14);
+  for(let i=0;i<4;i++) spawnUnit('peasant',0,-24+(Math.random()-0.5)*6,20+(Math.random()-0.5)*6);
+  spawnUnit('footman',0,-20,16);
+  // enemy base NE
+  spawnBuilding('townHall',1,24,-20);
+  spawnBuilding('barracks',1,18,-24);
+  spawnBuilding('tower',1,28,-14);
+  spawnBuilding('tower',1,20,-14);
+  for(let i=0;i<3;i++) spawnUnit('peasant',1,24+(Math.random()-0.5)*6,-20+(Math.random()-0.5)*6);
+  for(let i=0;i<2;i++) spawnUnit('grunt',1,22+(Math.random()-0.5)*4,-18+(Math.random()-0.5)*4);
+}
+
+// ============ SELECTION & ORDERS ============
+const selBox=$('selection-box');
+let dragStart=null, isDragging=false;
+function screenPos(e){ return {x:e.clientX, y:e.clientY}; }
+renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+renderer.domElement.addEventListener('mousedown',e=>{
+  if(!G.started||G.over) return;
+  if(G.placeMode && e.button===0){ tryPlace(G.placeMode); return; }
+  if(e.button===0){
+    if(G.attackMove){ attackMoveOrder(e); return; }
+    dragStart=screenPos(e); isDragging=false;
+  } else if(e.button===2){ issueOrder(e); }
+  else if(e.button===1){ /* pan */ }
+});
+renderer.domElement.addEventListener('mousemove',e=>{
+  if(dragStart){
+    const dx=e.clientX-dragStart.x, dy=e.clientY-dragStart.y;
+    if(Math.hypot(dx,dy)>6) isDragging=true;
+    if(isDragging){
+      selBox.style.display='block';
+      selBox.style.left=Math.min(e.clientX,dragStart.x)+'px';
+      selBox.style.top=Math.min(e.clientY,dragStart.y)+'px';
+      selBox.style.width=Math.abs(dx)+'px'; selBox.style.height=Math.abs(dy)+'px';
+    }
+  }
+  // ghost
+  if(G.placeMode){ updateGhost(e); }
+});
+renderer.domElement.addEventListener('mouseup',e=>{
+  if(e.button!==0) return;
+  if(G.placeMode) return;
+  if(dragStart && isDragging){ boxSelect(dragStart,{x:e.clientX,y:e.clientY}, e.shiftKey); }
+  else if(dragStart && !isDragging){ clickSelect(e, e.shiftKey); }
+  dragStart=null; isDragging=false; selBox.style.display='none';
+});
+function pickEntity(e){
+  const r=renderer.domElement.getBoundingClientRect();
+  mouseNDC.set(((e.clientX-r.left)/r.width)*2-1, -((e.clientY-r.top)/r.height)*2+1);
+  raycaster.setFromCamera(mouseNDC,camera);
+  const meshes=[];
+  for(const u of G.units) meshes.push(u.mesh);
+  for(const b of G.buildings) meshes.push(b.mesh);
+  for(const t of G.trees) meshes.push(t.mesh);
+  for(const m of G.mines) meshes.push(m.mesh);
+  const hits=raycaster.intersectObjects(meshes,true);
+  if(!hits.length) return null;
+  let o=hits[0].object;
+  while(o && !o.userData.ent){ if(o.userData.isTree||o.userData.isMine) break; o=o.parent; }
+  if(o&&o.userData.ent) return {ent:o.userData.ent, point:hits[0].point};
+  // check tree/mine parents
+  let p=hits[0].object;
+  while(p){ if(p.parent===scene) break; p=p.parent; }
+  const tree=G.trees.find(t=>t.mesh===p); if(tree) return {ent:{kind:'tree',...tree}, point:hits[0].point};
+  const mine=G.mines.find(m=>m.mesh===p); if(mine) return {ent:{kind:'mine',...mine}, point:hits[0].point};
+  return {ent:null, point:hits[0].point};
+}
+function groundPoint(e){
+  const r=renderer.domElement.getBoundingClientRect();
+  mouseNDC.set(((e.clientX-r.left)/r.width)*2-1, -((e.clientY-r.top)/r.height)*2+1);
+  raycaster.setFromCamera(mouseNDC,camera);
+  const h=raycaster.intersectObject(groundMesh);
+  return h.length?h[0].point:null;
+}
+function clickSelect(e, additive){
+  const p=pickEntity(e);
+  if(!additive) G.selected.clear();
+  if(p&&p.ent&&(p.ent.kind==='unit'||p.ent.kind==='building')&&p.ent.team===0&&p.ent.hp>0){
+    G.selected.add(p.ent); sfx.select();
+  } else if(p&&p.ent&&p.ent.team===1&&(p.ent.kind==='unit'||p.ent.kind==='building')){
+    // select enemy to show info? keep selection but show enemy info
+    if(!additive) G.selected.clear();
+    showEnemyInfo(p.ent); return;
+  }
+  refreshPanel();
+}
+function boxSelect(a,b,additive){
+  if(!additive) G.selected.clear();
+  const x0=Math.min(a.x,b.x),x1=Math.max(a.x,b.x),y0=Math.min(a.y,b.y),y1=Math.max(a.y,b.y);
+  const v=new THREE.Vector3();
+  for(const u of G.units){
+    if(u.team!==0||u.hp<=0) continue;
+    v.set(u.x,2,u.z).project(camera);
+    const sx=(v.x*0.5+0.5)*innerWidth, sy=(-v.y*0.5+0.5)*innerHeight;
+    if(sx>=x0&&sx<=x1&&sy>=y0&&sy<=y1) G.selected.add(u);
+  }
+  if(G.selected.size) sfx.select();
+  refreshPanel();
+}
+function issueOrder(e){
+  if(!G.selected.size){ return; }
+  const p=pickEntity(e); const g=groundPoint(e);
+  const units=[...G.selected].filter(s=>s.kind==='unit');
+  if(!units.length){
+    // building rally point
+    const b=[...G.selected].find(s=>s.kind==='building');
+    if(b&&g&&(b.type==='townHall'||b.type==='barracks')){ b.rally={x:g.x,z:g.z}; toast('Rally point set'); sfx.order(); }
+    return;
+  }
+  if(p&&p.ent){
+    const t=p.ent;
+    if((t.kind==='unit'||t.kind==='building')&&t.team===1&&t.hp>0){ orderAttack(units,t); return; }
+    if(t.kind==='mine'||(t.kind==='building'&&t.type==='goldref')){ orderHarvest(units,'gold',t); return; }
+    if(t.kind==='tree'){ orderHarvest(units,'wood',t); return; }
+    if((t.kind==='unit'||t.kind==='building')&&t.team===0&&t!==units[0]){ /* follow? move */ }
+  }
+  // smart harvest: right click on mine/tree via ground fallback - check proximity
+  if(g){
+    const mine=nearestMine(g.x,g.z,3.5); if(mine&&units.some(u=>u.type==='peasant')){ orderHarvest(units.filter(u=>u.type==='peasant'),'gold',mine); if(units.some(u=>u.type!=='peasant')) orderMove(units.filter(u=>u.type!=='peasant'),g.x,g.z); return; }
+    const tree=nearestTree(g.x,g.z,2.5); if(tree&&units.some(u=>u.type==='peasant')){ orderHarvest(units.filter(u=>u.type==='peasant'),'wood',tree); return; }
+  }
+  if(g) orderMove(units,g.x,g.z);
+}
+function orderMove(units,x,z){
+  units.forEach((u,i)=>{ u.tx=x+(i%3-1)*1.5; u.tz=z+(Math.floor(i/3)-0.5)*1.5; u.target=null; u.task='move'; });
+  moveMarker(x,z,0x37e037); sfx.order();
+}
+function orderAttack(units,target){
+  units.forEach(u=>{ u.target=target; u.task='attack'; });
+  moveMarker(target.x,target.z,0xff3333); sfx.order(); toast('⚔ Attack!');
+}
+function attackMoveOrder(e){
+  const g=groundPoint(e); if(!g) return;
+  const units=[...G.selected].filter(s=>s.kind==='unit');
+  units.forEach(u=>{ u.tx=g.x; u.tz=g.z; u.target=null; u.task='attackmove'; });
+  moveMarker(g.x,g.z,0xffb300); sfx.order(); G.attackMove=false; renderer.domElement.style.cursor='default';
+}
+function orderHarvest(units,what,res){
+  let n=0;
+  for(const u of units){ if(u.type!=='peasant') continue; u.task='harvest'; u.harvestWhat=what; u.harvestRes=res; u.target=null; u.tx=res.x; u.tz=res.z; n++; }
+  if(n){ sfx.order(); toast(what==='gold'?'⛏ Harvesting gold':'🪓 Chopping wood'); }
+  else { sfx.error(); toast('Only Peasants can harvest!'); }
+}
+// markers
+const markers=[];
+function moveMarker(x,z,color){
+  const m=new THREE.Mesh(new THREE.RingGeometry(0.8,1.1,24), new THREE.MeshBasicMaterial({color, side:THREE.DoubleSide, transparent:true}));
+  m.rotation.x=-Math.PI/2; m.position.set(x,groundH(x,z)+0.3,z); scene.add(m);
+  markers.push({mesh:m,life:0.9});
+}
+
+// ============ COMMAND CARD ============
+const COSTS={ peasant:{gold:90,wood:0,time:7}, footman:{gold:160,wood:30,time:11}, grunt:{gold:150,wood:20,time:10}, barracks:{gold:180,wood:80}, farm:{gold:100,wood:60}, tower:{gold:140,wood:100} };
+function refreshPanel(){
+  const btns=$('buttons'); btns.innerHTML='';
+  const sel=[...G.selected];
+  const title=$('sel-title'), info=$('sel-info');
+  document.querySelectorAll('#command-card .cmd').forEach(()=>{});
+  if(!sel.length){ title.textContent='No selection'; info.innerHTML='Drag-select units. Right-click to move / attack / harvest.'; return; }
+  if(sel.length>1){ title.textContent=`Squad (${sel.length})`; info.innerHTML=`${sel.length} units selected<br>Right-click to order. <button class="cmd" id="tmp-stop" style="margin-top:4px">■ Stop (S)</button>`; $('tmp-stop').onclick=()=>stopSel(); addBtn(btns,'⚔ Attack (A)',()=>setAttackMove(),false); return; }
+  const s=sel[0];
+  if(s.kind==='unit'){
+    title.textContent=(s.type==='peasant'?'👷 Peasant':(s.type==='footman'?'🛡 Footman':'👹 Grunt'))+(s.team===1?' (enemy)':'');
+    info.innerHTML=`HP ${Math.ceil(s.hp)} / ${s.maxHp}<div class="hpbar"><i style="width:${(100*s.hp/s.maxHp).toFixed(0)}%"></i></div>${s.carry?`Carrying: ${s.carryAmt} ${s.carry}<br>`:''}<span style="opacity:.75">DMG ${s.dmg} • ${s.task}</span>`;
+    if(s.team!==0) return;
+    addBtn(btns,'■ Stop (S)',()=>stopSel(),false);
+    addBtn(btns,'⚔ Attack (A)',()=>setAttackMove(),false);
+    if(s.type==='peasant'){
+      addBtn(btns,'🏠 Build Barracks<br><small>180🪙 80🪵</small>',()=>startPlace('barracks'),!canAfford('barracks'),'build');
+      addBtn(btns,'🌾 Build Farm<br><small>100🪙 60🪵 +6 supply</small>',()=>startPlace('farm'),!canAfford('farm'),'build');
+      addBtn(btns,'🗼 Build Tower<br><small>140🪙 100🪵</small>',()=>startPlace('tower'),!canAfford('tower'),'build');
+    }
+  } else {
+    title.textContent=(s.type==='townHall'?'🏰 Town Hall':(s.type==='barracks'?'⚒ Barracks':(s.type==='farm'?'🌾 Farm':'🗼 Tower')))+(s.team===1?' (enemy)':'');
+    info.innerHTML=`HP ${Math.ceil(s.hp)} / ${s.maxHp}<div class="hpbar"><i style="width:${(100*s.hp/s.maxHp).toFixed(0)}%"></i></div>`+(s.building?`<span style="color:#ffb300">🚧 Under construction…</span>`:'');
+    if(s.team!==0||s.building) return;
+    if(s.type==='townHall'){
+      addBtn(btns,`👷 Train Peasant<br><small>90🪙 • 7s</small>`,()=>train(s,'peasant'),!canAfford('peasant')||supplyUsed()+1>supplyMax(),false);
+      queueBtns(btns,s);
+    }
+    if(s.type==='barracks'){
+      addBtn(btns,`🛡 Train Footman<br><small>160🪙 30🪵 • 11s</small>`,()=>train(s,'footman'),!canAfford('footman')||supplyUsed()+2>supplyMax(),false);
+      queueBtns(btns,s);
+    }
+    if(s.type==='tower'){ info.innerHTML+=`<br><span style="opacity:.75">Auto-attacks enemies in range ${BSTAT.tower.range}</span>`; }
+    addBtn(btns,'📍 Rally: right-click map',()=>{toast('Select building, then right-click map');},false);
+  }
+}
+function addBtn(parent,label,fn,disabled,cls){
+  const b=document.createElement('button'); b.className='cmd'+(cls?' '+cls:''); b.innerHTML=label; b.disabled=!!disabled; b.onclick=fn; parent.appendChild(b);
+}
+function queueBtns(parent,b){
+  const q=G.trainQueues.get(b.id)||[];
+  if(q.length){ const d=document.createElement('div'); d.style.cssText='grid-column:1/3;font-size:12px;background:rgba(0,0,0,.4);padding:4px 8px;border-radius:6px'; d.textContent=`⏳ Training: ${q.map(i=>i.type).join(', ')} (${q[0].t.toFixed(0)}s)`; parent.appendChild(d); }
+}
+function canAfford(k){ const c=COSTS[k]; if(!c) return true; return G.gold>=(c.gold||0)&&G.wood>=(c.wood||0); }
+function pay(k){ const c=COSTS[k]; G.gold-=c.gold||0; G.wood-=c.wood||0; }
+function train(b,type){
+  if(!canAfford(type)||supplyUsed()+(type==='peasant'?1:2)>supplyMax()){ sfx.error(); toast('Not enough resources or supply! Build farms.'); return; }
+  pay(type); sfx.train();
+  if(!G.trainQueues.has(b.id)) G.trainQueues.set(b.id,[]);
+  G.trainQueues.get(b.id).push({type, t:COSTS[type].time});
+  toast(`Training ${type}…`); refreshPanel();
+}
+function stopSel(){ for(const s of G.selected){ if(s.kind==='unit'){ s.task='idle'; s.target=null; s.tx=s.x; s.tz=s.z; } } sfx.order(); refreshPanel(); }
+function setAttackMove(){ G.attackMove=true; renderer.domElement.style.cursor='crosshair'; toast('Attack-move: left-click a destination (A)'); }
+function startPlace(type){
+  if(!canAfford(type)){ sfx.error(); return; }
+  G.placeMode=type; $('build-hint').style.display='block';
+  showGhost(type);
+}
+function showGhost(type){
+  clearGhost();
+  ghostMesh=makeBuildingMesh(type,0);
+  ghostMesh.traverse(o=>{ if(o.material){ o.material=o.material.clone(); o.material.transparent=true; o.material.opacity=0.55; }});
+  scene.add(ghostMesh);
+}
+function clearGhost(){ if(ghostMesh){ scene.remove(ghostMesh); ghostMesh=null; } $('build-hint').style.display='none'; }
+function updateGhost(e){
+  const g=groundPoint(e); if(!g||!ghostMesh) return;
+  ghostMesh.position.set(g.x,groundH(g.x,g.z),g.z);
+  const ok=canPlace(g.x,g.z);
+  ghostMesh.traverse(o=>{ if(o.material&&o.material.color) o.material.color.offsetHSL(0,0,0); });
+}
+function canPlace(x,z){
+  if(Math.abs(x)>MAP/2-4||Math.abs(z)>MAP/2-4) return false;
+  for(const b of G.buildings){ if(Math.hypot(b.x-x,b.z-z)<6) return false; }
+  if(G.mines.some(m=>Math.hypot(m.x-x,m.z-z)<6)) return false;
+  return true;
+}
+function tryPlace(){
+  const type=G.placeMode; if(!ghostMesh) return;
+  const {x,z}=ghostMesh.position;
+  if(!canPlace(x,z)){ sfx.error(); toast('Cannot build here!'); return; }
+  pay(type); sfx.build();
+  const peasants=[...G.selected].filter(s=>s.kind==='unit'&&s.type==='peasant'&&s.team===0);
+  const b=spawnBuilding(type,0,x,z,false);
+  if(peasants.length){ const p=peasants[0]; p.task='build'; p.target=b; p.tx=x; p.tz=z; }
+  G.placeMode=null; clearGhost(); toast(`🏗 Building ${type} — a peasant will construct it`); refreshPanel();
+}
+function showEnemyInfo(e){
+  $('sel-title').textContent='👹 Enemy '+(e.type||'');
+  $('sel-info').innerHTML=`HP ${Math.ceil(e.hp)} / ${e.maxHp}<div class="hpbar"><i style="width:${(100*e.hp/e.maxHp).toFixed(0)}%"></i></div><span style="opacity:.75">Right-click it with your army to attack!</span>`;
+  $('buttons').innerHTML='';
+}
+
+// ============ HARVEST / COMBAT HELPERS ============
+function nearestMine(x,z,r){ let best=null,bd=r; for(const m of G.mines){ if(m.gold<=0) continue; const d=Math.hypot(m.x-x,m.z-z); if(d<bd){bd=d;best={kind:'mine',...m,x:m.x,z:m.z,gold:m.gold,ref:m};} } return best; }
+function nearestTree(x,z,r){ let best=null,bd=r; for(const t of G.trees){ if(t.hp<=0) continue; const d=Math.hypot(t.x-x,t.z-z); if(d<bd){bd=d;best={kind:'tree',...t,x:t.x,z:t.z,ref:t};} } return best; }
+function nearestEnemy(x,z,range,team){
+  let best=null,bd=range;
+  for(const u of G.units){ if(u.team===team||u.hp<=0) continue; const d=Math.hypot(u.x-x,u.z-z); if(d<bd){bd=d;best=u;} }
+  for(const b of G.buildings){ if(b.team===team||b.hp<=0) continue; const d=Math.hypot(b.x-x,b.z-z); if(d<bd+2){bd=d;best=b;} }
+  return best;
+}
+function dealDamage(src,dst){
+  if(dst.hp<=0) return;
+  dst.hp-=src.dmg||10;
+  setBar(dst);
+  // hit flash + swing
+  if(src.mesh&&src.mesh.userData.armR) src.mesh.userData.armR.rotation.x=-1.2;
+  sfx.sword();
+  // blood/spark puff
+  puff(dst.x,dst.z, dst.team===src.team?0xffffff:0xff5533);
+  if(dst.hp<=0) killEnt(src,dst);
+  else if(dst.kind==='unit'&&!dst.target&&dst.team!==src.team){ dst.target=src; dst.task='attack'; } // retaliate
+}
+function puff(x,z,color){
+  const m=new THREE.Mesh(new THREE.SphereGeometry(0.3,6,5), new THREE.MeshBasicMaterial({color, transparent:true}));
+  m.position.set(x,groundH(x,z)+1.5,z); scene.add(m);
+  markers.push({mesh:m,life:0.35,puff:true});
+}
+function killEnt(src,dst){
+  dst.hp=0;
+  if(dst.kind==='unit'){
+    scene.remove(dst.mesh);
+    G.units=G.units.filter(u=>u!==dst);
+    G.selected.delete(dst);
+    if(src&&src.team===0&&dst.team===1){ G.kills++; G.gold+=25; }
+    puff(dst.x,dst.z,0x663333);
+  } else {
+    // building destroyed -> rubble
+    scene.remove(dst.mesh);
+    G.buildings=G.buildings.filter(b=>b!==dst);
+    G.selected.delete(dst);
+    G.trainQueues.delete(dst.id);
+    const rub=new THREE.Mesh(new THREE.BoxGeometry(4,1,4), mat(0x3a3a3a));
+    rub.position.set(dst.x,groundH(dst.x,dst.z)+0.4,dst.z); scene.add(rub);
+    toast(dst.team===1?'🔥 Enemy building destroyed! +150 🪙':'💥 Our building was destroyed!');
+    if(dst.team===1) G.gold+=150;
+    if(src&&src.team===0) G.kills++;
+  }
+  refreshPanel(); checkEnd();
+}
+function checkEnd(){
+  if(G.over) return;
+  const enemyAlive=G.units.some(u=>u.team===1&&u.hp>0)||G.buildings.some(b=>b.team===1&&b.hp>0);
+  const meAlive=G.units.some(u=>u.team===0&&u.hp>0)||G.buildings.some(b=>b.team===0&&b.hp>0);
+  if(!enemyAlive){ endGame(true); }
+  else if(!meAlive){ endGame(false); }
+}
+function endGame(win){
+  G.over=true;
+  $('end').style.display='flex';
+  $('end-title').textContent=win?'🏆 VICTORY!':'💀 DEFEAT';
+  $('end-title').style.color=win?'#ffcf4d':'#ff6a6a';
+  $('end-sub').textContent=win?`The Orc base burns! Time ${fmtTime(G.time)} • ${G.kills} kills • ${G.harvested} resources hauled. Ferdinand would be proud.`:`Your base has fallen after ${fmtTime(G.time)}. Train more Footmen and guard with towers!`;
+  win?sfx.win():sfx.lose();
+}
+
+// ============ UPDATE LOOP ============
+const clock=new THREE.Clock();
+function update(dt){
+  G.time+=dt;
+  // camera
+  updateCamera(dt);
+  // training
+  for(const [bid,q] of [...G.trainQueues]){
+    const b=G.buildings.find(x=>x.id===bid);
+    if(!b||b.hp<=0||b.building){ continue; }
+    if(!q.length) continue;
+    q[0].t-=dt;
+    if(q[0].t<=0){
+      const it=q.shift();
+      const u=spawnUnit(it.type,b.team,b.x+4+(Math.random()-0.5)*2,b.z+4+(Math.random()-0.5)*2);
+      u.tx=b.rally.x; u.tz=b.rally.z; u.task='move';
+      sfx.train(); toast(`${it.type==='peasant'?'👷 Peasant':'🛡 Footman'} ready!`);
+      if(b.team===0) refreshPanelThrottled();
+    }
+  }
+  // units
+  for(const u of [...G.units]){
+    if(u.hp<=0) continue;
+    u.cooldown-=dt;
+    // walk anim
+    const moving = Math.hypot(u.tx-u.x,u.tz-u.z)>0.4 || (u.target&&u.target.hp>0&&Math.hypot(u.target.x-u.x,u.target.z-u.z)>u.range);
+    if(moving){ u.walkPh+=dt*10; }
+    u.mesh.position.y=groundH(u.x,u.z)+(moving?Math.abs(Math.sin(u.walkPh))*0.12:0);
+    if(u.mesh.userData.armR) u.mesh.userData.armR.rotation.x += ((-0.2)-u.mesh.userData.armR.rotation.x)*dt*6;
+    // face
+    let fx=null,fz=null;
+    if(u.task==='harvest'||u.task==='build'||u.task==='attack'||u.task==='attackmove'||u.task==='move'){ /* set below */ }
+    switch(u.task){
+      case 'idle': {
+        if(u.team===1){ const e=nearestEnemy(u.x,u.z,u.sight,u.team); if(e){u.target=e;u.task='attack';} }
+        else { const e=nearestEnemy(u.x,u.z,u.sight*0.6,u.team); if(e&&u.type!=='peasant'){u.target=e;u.task='attack';} }
+        break;
+      }
+      case 'move': moveToward(u,u.tx,u.tz,dt); if(Math.hypot(u.tx-u.x,u.tz-u.z)<0.6){u.task='idle';} break;
+      case 'attackmove': {
+        const e=nearestEnemy(u.x,u.z,u.sight,u.team); if(e){u.target=e;u.task='attack';break;}
+        moveToward(u,u.tx,u.tz,dt); if(Math.hypot(u.tx-u.x,u.tz-u.z)<0.8) u.task='idle'; break;
+      }
+      case 'attack': {
+        const t=u.target;
+        if(!t||t.hp<=0){ u.target=null; u.task=u.team===1?'idle':'idle'; break; }
+        const d=Math.hypot(t.x-u.x,t.z-u.z)-(t.kind==='building'?2.5:0);
+        if(d<=u.range){ face(u,t.x,t.z); if(u.cooldown<=0){ dealDamage(u,t); u.cooldown=1.0; } }
+        else moveToward(u,t.x,t.z,dt);
+        break;
+      }
+      case 'harvest': {
+        const r=u.harvestRes;
+        const gone = !r || (u.harvestWhat==='gold'?(r.gold!==undefined?r.gold<=0:(r.ref?r.ref.gold<=0:true)):(r.hp!==undefined?r.hp<=0:(r.ref?r.ref.hp<=0:true)));
+        if(gone){
+          // find another nearby resource or return cargo
+          if(u.carry){ deliverCheck(u); }
+          else { const alt = u.harvestWhat==='gold'?nearestMine(u.x,u.z,20):nearestTree(u.x,u.z,20);
+            if(alt){ u.harvestRes=alt; u.tx=alt.x; u.tz=alt.z; } else u.task='idle'; }
+          break;
+        }
+        const rx=r.x??r.ref?.x, rz=r.z??r.ref?.z;
+        const d=Math.hypot(rx-u.x,rz-u.z);
+        if(u.carry){
+          // return to hall
+          const hall=nearestHall(u.team,u.x,u.z);
+          if(!hall){ u.task='idle'; break; }
+          const dh=Math.hypot(hall.x-u.x,hall.z-u.z);
+          if(dh<5){ G.gold+=u.harvestWhat==='gold'?u.carryAmt:0; G.wood+=u.harvestWhat==='wood'?u.carryAmt:0; G.harvested+=u.carryAmt; if(u.team===0){sfx.coin();} u.carry=null; u.carryAmt=0; u.tx=rx; u.tz=rz; }
+          else moveToward(u,hall.x,hall.z,dt,true);
+          face(u,hall.x,hall.z);
+        } else {
+          if(d<(u.harvestWhat==='gold'?3.5:2.8)){ face(u,rx,rz); u.harvestT+=dt;
+            if(u.harvestT>0.9){ u.harvestT=0; chopTick(u,r); }
+          } else moveToward(u,rx,rz,dt,true);
+        }
+        break;
+      }
+      case 'build': {
+        const b=u.target;
+        if(!b||b.hp<=0||!b.building){ u.task='idle'; break; }
+        const d=Math.hypot(b.x-u.x,b.z-u.z);
+        if(d<5){ face(u,b.x,b.z); b.hp+=dt*22; if(b.hp>=b.maxHp){b.hp=b.maxHp;b.building=false;toast(`✅ ${b.type} complete!`);sfx.build();refreshPanelThrottled();} setBar(b); }
+        else moveToward(u,b.x,b.z,dt);
+        break;
+      }
+    }
+    // selection ring pulse
+    u.ring.material.opacity = G.selected.has(u)?1:0.55;
+    u.ring.scale.setScalar(G.selected.has(u)?1.25+Math.sin(performance.now()*0.006)*0.08:1);
+    u.mesh.position.x=u.x; u.mesh.position.z=u.z;
+    // billboard health bar
+    u.bar.quaternion.copy(camera.quaternion);
+  }
+  // buildings: towers shoot, halls cloth wave
+  for(const b of G.buildings){
+    if(b.mesh.userData.cloth) b.mesh.userData.cloth.rotation.y=Math.sin(performance.now()*0.003)*0.4;
+    if(b.mesh.userData.crystal) b.mesh.userData.crystal.rotation.y+=dt*2;
+    setBarBillboard(b);
+    if(b.building||b.hp<=0) continue;
+    if(b.range>0){ b.cooldown-=dt;
+      if(b.cooldown<=0){ const e=nearestEnemy(b.x,b.z,b.range,b.team); if(e){ shootBolt(b,e); b.cooldown=1.1; } }
+    }
+  }
+  // markers
+  for(let i=markers.length-1;i>=0;i--){ const m=markers[i]; m.life-=dt;
+    if(m.puff){ m.mesh.scale.multiplyScalar(1+dt*4); m.mesh.material.opacity=Math.max(0,m.life*2); }
+    else { m.mesh.scale.multiplyScalar(1+dt*1.5); m.mesh.material.opacity=Math.max(0,m.life); }
+    if(m.life<=0){ scene.remove(m.mesh); markers.splice(i,1); } }
+  // enemy AI
+  if(G.started&&!G.over){ G.enemyTimer-=dt;
+    // trickle enemy eco
+    if(Math.random()<dt*0.5){ const h=G.buildings.find(b=>b.team===1&&b.type==='townHall'&&b.hp>0); }
+    if(G.enemyTimer<=0){ enemyWave(); G.enemyTimer=Math.max(28,62-G.wave*3); }
+  }
+  // HUD
+  updateHUD();
+  drawMinimap();
+}
+const bolts=[];
+function shootBolt(b,e){
+  const from=new THREE.Vector3(b.x,6,b.z), to=new THREE.Vector3(e.x??e.target?.x??0,1.5,e.z??0);
+  const geo=new THREE.BufferGeometry().setFromPoints([from,to]);
+  const line=new THREE.Line(geo,new THREE.LineBasicMaterial({color:0x88ddff})); scene.add(line);
+  bolts.push({line,life:0.15});
+  setTimeout(()=>scene.remove(line),160);
+  dealDamage({dmg:b.dmg,team:b.team,mesh:null},e);
+  beep(900+Math.random()*400,0.08,'sawtooth',0.06);
+}
+function moveToward(u,x,z,dt,slow){
+  const dx=x-u.x,dz=z-u.z,d=Math.hypot(dx,dz);
+  if(d<0.15) return;
+  const sp=u.speed*(slow?0.95:1)*(u.carry?0.85:1);
+  const step=Math.min(d,sp*dt);
+  let nx=u.x+dx/d*step, nz=u.z+dz/d*step;
+  nx=Math.max(-MAP/2+1,Math.min(MAP/2-1,nx)); nz=Math.max(-MAP/2+1,Math.min(MAP/2-1,nz));
+  // separation
+  for(const o of G.units){ if(o===u||o.hp<=0) continue; const od=Math.hypot(o.x-nx,o.z-nz); if(od<0.9&&od>0.001){ nx+=(nx-o.x)/od*dt*2; nz+=(nz-o.z)/od*dt*2; } }
+  u.x=nx; u.z=nz; face(u,x,z);
+}
+function face(u,x,z){ u.mesh.rotation.y=Math.atan2(x-u.x,z-u.z); }
+function nearestHall(team,x,z){ let best=null,bd=1e9; for(const b of G.buildings){ if(b.team!==team||b.hp<=0||b.building) continue; if(b.type!=='townHall') continue; const d=Math.hypot(b.x-x,b.z-z); if(d<bd){bd=d;best=b;} } return best; }
+function chopTick(u,r){
+  const amt=10;
+  if(u.harvestWhat==='gold'){ const mine=r.ref||r; const store=G.mines.find(m=>m.mesh===(mine.mesh||mine.ref?.mesh)||m===mine||m.x===(r.x)); const target=G.mines.find(m=>Math.hypot(m.x-u.tx,m.z-u.tz)<4)||G.mines[0];
+    const realTarget=G.mines.reduce((a,b)=>Math.hypot(b.x-u.x,b.z-u.z)<Math.hypot(a.x-u.x,a.z-u.z)?b:a);
+    if(realTarget.gold<=0){u.task='idle';return;}
+    realTarget.gold-=amt; u.carry='gold'; u.carryAmt=amt; sfx.coin();
+    if(realTarget.gold<=0){ realTarget.mesh.traverse(o=>{if(o.material)o.material=o.material.clone(),o.material.color?.multiplyScalar?.(0.4);}); }
+  } else { const tree=r.ref||r; const realTarget=G.trees.reduce((a,b)=>(b.hp>0&&Math.hypot(b.x-u.x,b.z-u.z)<Math.hypot(a.x-u.x,a.z-u.z))?b:a, G.trees.find(t=>t.hp>0));
+    if(!realTarget||realTarget.hp<=0){u.task='idle';return;}
+    realTarget.hp-=amt*1.5; u.carry='wood'; u.carryAmt=amt; beep(300,0.05,'square',0.05);
+    if(realTarget.hp<=0){ scene.remove(realTarget.mesh); }
+  }
+  // head home after chop
+  u.harvestT=0;
+}
+function deliverCheck(u){ /* handled in harvest */ }
+function enemyWave(){
+  G.wave++;
+  const hall=G.buildings.find(b=>b.team===1&&b.type==='townHall'&&b.hp>0);
+  if(!hall) return;
+  const n=Math.min(2+Math.floor(G.wave/1.5),7);
+  const playerHall=G.buildings.find(b=>b.team===0&&b.hp>0);
+  const tx=playerHall?playerHall.x:-24, tz=playerHall?playerHall.z:20;
+  for(let i=0;i<n;i++){ const g=spawnUnit('grunt',1,hall.x+(Math.random()-0.5)*6,hall.z+(Math.random()-0.5)*6); g.task='attackmove'; g.tx=tx+(Math.random()-0.5)*8; g.tz=tz+(Math.random()-0.5)*8; }
+  toast(`🚨 Orc wave ${G.wave} incoming! (${n} Grunts)`);
+  beep(140,0.4,'sawtooth',0.15);
+}
+function setBarBillboard(b){ b.bar.quaternion.copy(camera.quaternion); }
+
+// ============ CAMERA ============
+const keys={};
+addEventListener('keydown',e=>{
+  keys[e.key.toLowerCase()]=true;
+  if(!G.started||G.over) return;
+  if(e.key==='Escape'){ G.placeMode=null; clearGhost(); G.attackMove=false; renderer.domElement.style.cursor='default'; }
+  if(e.key.toLowerCase()==='a'&&document.activeElement===document.body){ setAttackMove(); }
+  if(e.key.toLowerCase()==='s'){ stopSel(); }
+  if(e.key===' '){ e.preventDefault(); jumpToAction(); }
+});
+addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
+function updateCamera(dt){
+  const c=G.camMode; const sp=(18+ c.dist*0.35)*dt;
+  if(keys['w']||keys['arrowup']) c.z-=sp;
+  if(keys['arrowdown']) c.z+=sp;
+  if(keys['arrowleft']) c.x-=sp;
+  if(keys['arrowright']) c.x+=sp;
+  // WASD: W/D pan; A reserved for attack-move, S reserved for stop
+  if(keys['d']&&!eTyping()) c.x+=sp;
+  // clamp
+  c.x=Math.max(-45,Math.min(45,c.x)); c.z=Math.max(-45,Math.min(45,c.z));
+  const cx=c.x, cz=c.z;
+  camera.position.set(cx + Math.sin(c.angle)*c.dist*0.55, c.dist*0.85, cz + Math.cos(c.angle)*c.dist*0.55);
+  camera.lookAt(cx,0,cz);
+}
+function eTyping(){ return document.activeElement && (document.activeElement.tagName==='INPUT'||document.activeElement.tagName==='TEXTAREA'); }
+renderer.domElement.addEventListener('wheel',e=>{ e.preventDefault(); G.camMode.dist=Math.max(18,Math.min(90,G.camMode.dist+e.deltaY*0.03)); },{passive:false});
+// middle-drag pan + touch
+let midDrag=null;
+renderer.domElement.addEventListener('mousedown',e=>{ if(e.button===1){ midDrag={x:e.clientX,y:e.clientY,cx:G.camMode.x,cz:G.camMode.z}; e.preventDefault(); } });
+addEventListener('mousemove',e=>{ if(midDrag){ G.camMode.x=midDrag.cx-(e.clientX-midDrag.x)*0.06; G.camMode.z=midDrag.cz-(e.clientY-midDrag.y)*0.06; } });
+addEventListener('mouseup',()=>midDrag=null);
+// touch: single tap select, double tap order
+let lastTap=0;
+renderer.domElement.addEventListener('touchstart',e=>{ if(e.touches.length===2) midDrag={x:e.touches[0].clientX,y:e.touches[0].clientY,cx:G.camMode.x,cz:G.camMode.z}; },{passive:true});
+function jumpToAction(){
+  // jump to most recent battle: nearest enemy to player units
+  let best=null,bd=1e9;
+  for(const u of G.units){ if(u.team!==1) continue; const p=G.units.find(f=>f.team===0); if(!p) continue; const d=Math.hypot(u.x-p.x,u.z-p.z); if(d<bd){bd=d;best=u;} }
+  if(best){ G.camMode.x=best.x; G.camMode.z=best.z; }
+}
+
+// ============ HUD / MINIMAP ============
+function fmtTime(s){ const m=Math.floor(s/60),ss=Math.floor(s%60); return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`; }
+function updateHUD(){
+  $('r-gold').textContent=Math.floor(G.gold);
+  $('r-wood').textContent=Math.floor(G.wood);
+  $('r-food').textContent=`${supplyUsed()}/${supplyMax()}`;
+  $('r-army').textContent=G.units.filter(u=>u.team===0&&u.type!=='peasant').length;
+  $('timer').textContent=`${fmtTime(G.time)} • Wave ${G.wave} • ${G.kills} kills`;
+}
+let panelThrottle=0;
+function refreshPanelThrottled(){ const now=performance.now(); if(now-panelThrottle>800){ panelThrottle=now; refreshPanel(); } }
+const mm=$('minimap').getContext('2d');
+function drawMinimap(){
+  const S=180, k=S/MAP;
+  mm.fillStyle='#1d3a1d'; mm.fillRect(0,0,S,S);
+  mm.fillStyle='#2f6fb0'; mm.fillRect(0,0,S,6); mm.fillRect(0,S-6,S,6); mm.fillRect(0,0,6,S); mm.fillRect(S-6,0,6,S);
+  mm.fillStyle='#c9a83d';
+  for(const m of G.mines){ if(m.gold<=0) continue; mm.fillRect(S/2+m.x*k-2,S/2+m.z*k-2,4,4); }
+  mm.fillStyle='#2d6a2d';
+  for(const t of G.trees){ if(t.hp<=0) continue; mm.fillRect(S/2+t.x*k-1,S/2+t.z*k-1,2,2); }
+  for(const b of G.buildings){ if(b.hp<=0) continue; mm.fillStyle=b.team===0?'#3a9bff':'#ff4444'; const s=b.type==='townHall'?7:5; mm.fillRect(S/2+b.x*k-s/2,S/2+b.z*k-s/2,s,s); }
+  for(const u of G.units){ mm.fillStyle=u.team===0?(G.selected.has(u)?'#ffff00':'#66bbff'):'#ff6666'; mm.fillRect(S/2+u.x*k-1,S/2+u.z*k-1,2,2); }
+  // camera rect
+  mm.strokeStyle='rgba(255,255,255,.7)'; mm.strokeRect(S/2+G.camMode.x*k-18,S/2+G.camMode.z*k-18,36,36);
+}
+$('minimap').addEventListener('click',e=>{
+  const r=e.target.getBoundingClientRect();
+  const mx=((e.clientX-r.left)/r.width-0.5)*MAP, mz=((e.clientY-r.top)/r.height-0.5)*MAP;
+  G.camMode.x=mx; G.camMode.z=mz;
+});
+
+// ============ BOOT / LOOP ============
+buildWorld();
+updateHUD(); drawMinimap(); refreshPanel();
+G.camMode.x=-18; G.camMode.z=14;
+// idle render before start (menu backdrop)
+let menuT=0;
+function menuRender(){
+  if(G.started) return;
+  menuT+=0.008;
+  G.camMode.x=-10+Math.sin(menuT)*6; G.camMode.z=2+Math.cos(menuT*0.7)*6;
+  camera.position.set(G.camMode.x+18,34,G.camMode.z+24);
+  camera.lookAt(G.camMode.x,0,G.camMode.z);
+  // animate flags/water life
+  for(const b of G.buildings){ if(b.mesh.userData.cloth) b.mesh.userData.cloth.rotation.y=Math.sin(performance.now()*0.003)*0.4; }
+  renderer.render(scene,camera);
+  requestAnimationFrame(menuRender);
+}
+menuRender();
+
+$('btn-start').onclick=()=>{
+  audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+  $('menu').style.display='none';
+  G.started=true;
+  G.camMode.x=-18; G.camMode.z=14; G.camMode.dist=46;
+  toast('⚔ Welcome, Commander! Select peasants, harvest gold, build an army!');
+  sfx.train();
+  clock.getDelta();
+  renderer.setAnimationLoop(loop);
+  // auto-select starting peasants
+  G.selected.clear();
+  for(const u of G.units){ if(u.team===0&&u.type==='peasant'){ G.selected.add(u); if(G.selected.size>=3) break; } }
+  refreshPanel();
+};
+$('btn-restart').onclick=()=>location.reload();
+addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+setInterval(()=>{ if(G.started&&!G.over) refreshPanelThrottled(); },1500);
+
+function loop(){
+  const dt=Math.min(clock.getDelta(),0.05);
+  if(!G.over) update(dt);
+  renderer.render(scene,camera);
+}
+// expose for automated checks
+window.__game=G;
+window.__ready=true;
+</script>
+</body>
+</html>
