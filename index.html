@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>League of Legends 3D — Rift Arena</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+</head>
+<body>
+<div id="game-root">
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Top bar -->
+  <div id="topbar" class="hidden">
+    <div class="team-score blue"><span id="blue-kills">0</span><span class="team-name">BLUE</span></div>
+    <div class="match-info">
+      <div id="match-timer">00:00</div>
+      <div id="tower-score"><span class="blue">◆◆◆</span> <span id="cs-score">0 CS</span> <span class="red">◆◆◆</span></div>
+    </div>
+    <div class="team-score red"><span class="team-name">RED</span><span id="red-kills">0</span></div>
+    <button id="mute-btn" title="Mute">🔊</button>
+  </div>
+
+  <!-- Minimap -->
+  <div id="minimap-wrap" class="hidden">
+    <canvas id="minimap" width="170" height="170"></canvas>
+    <div class="minimap-label">RIFT ARENA</div>
+  </div>
+
+  <!-- Kill feed / announcements -->
+  <div id="killfeed"></div>
+  <div id="announce" class="hidden"></div>
+
+  <!-- Player HUD -->
+  <div id="hud" class="hidden">
+    <div id="champ-portrait"><div id="portrait-icon">⚔️</div><div id="level-badge">1</div></div>
+    <div id="bars-abilities">
+      <div id="bars">
+        <div id="hp-bar"><div id="hp-fill"></div><span id="hp-text">600 / 600</span></div>
+        <div id="mp-bar"><div id="mp-fill"></div><span id="mp-text">300 / 300</span></div>
+        <div id="xp-bar"><div id="xp-fill"></div></div>
+      </div>
+      <div id="abilities">
+        <div class="abil" id="abil-q"><span class="key">Q</span><span class="icon">🌀</span><span class="cd"></span><span class="tip">Moon Bolt — skillshot</span></div>
+        <div class="abil" id="abil-w"><span class="key">W</span><span class="icon">💨</span><span class="cd"></span><span class="tip">Swift Dash + shield</span></div>
+        <div class="abil" id="abil-e"><span class="key">E</span><span class="icon">🌪️</span><span class="cd"></span><span class="tip">Blade Cyclone — AoE</span></div>
+        <div class="abil" id="abil-r"><span class="key">R</span><span class="icon">☄️</span><span class="cd"></span><span class="tip">Starfall — ultimate</span></div>
+      </div>
+    </div>
+    <div id="hud-right">
+      <div id="gold-box">💰 <span id="gold-val">475</span></div>
+      <div id="kda-box"><span id="kda-val">0 / 0 / 0</span></div>
+      <button id="shop-btn">🛒 SHOP <span class="key-hint">[P]</span></button>
+      <button id="recall-btn">⟲ RECALL <span class="key-hint">[B]</span></button>
+    </div>
+  </div>
+
+  <!-- Shop panel -->
+  <div id="shop" class="hidden">
+    <h2>Item Shop <span id="shop-gold">475g</span><button id="shop-close">✕</button></h2>
+    <div class="shop-items">
+      <button class="shop-item" data-item="sword">🗡️ Long Sword<br><small>+15 Attack</small><b>350g</b></button>
+      <button class="shop-item" data-item="ruby">❤️ Ruby Crystal<br><small>+180 Max HP</small><b>400g</b></button>
+      <button class="shop-item" data-item="boots">🥾 Boots<br><small>+12% Speed</small><b>300g</b></button>
+      <button class="shop-item" data-item="tome">📕 Blasting Wand<br><small>+25 Ability dmg</small><b>450g</b></button>
+      <button class="shop-item" data-item="mana">💧 Mana Crystal<br><small>+150 Mana</small><b>300g</b></button>
+      <button class="shop-item" data-item="armor">🛡️ Chain Vest<br><small>+12 Armor</small><b>400g</b></button>
+    </div>
+    <div id="shop-msg"></div>
+  </div>
+
+  <!-- Damage vignette / death overlay -->
+  <div id="damage-vignette"></div>
+  <div id="death-overlay" class="hidden"><div>YOU DIED</div><span id="respawn-timer">5s</span></div>
+
+  <!-- Start menu -->
+  <div id="menu">
+    <div class="menu-inner">
+      <div class="game-logo">LEAGUE <span>of</span> LEGENDS <em>3D</em></div>
+      <div class="subtitle">RIFT ARENA — a fan-made browser MOBA demo (not affiliated with Riot Games)</div>
+      <div class="champ-select">
+        <div class="champ-card selected" data-champ="blade">
+          <div class="champ-emoji">⚔️</div><h3>Azure Blade</h3><p>Balanced duelist. Great for beginners.</p>
+          <small>HP ★★★ · ATK ★★★ · SPD ★★★</small>
+        </div>
+        <div class="champ-card" data-champ="assassin">
+          <div class="champ-emoji">🗡️</div><h3>Shadow Fang</h3><p>Fast assassin. Burst damage, fragile.</p>
+          <small>HP ★★ · ATK ★★★★ · SPD ★★★★★</small>
+        </div>
+        <div class="champ-card" data-champ="golem">
+          <div class="champ-emoji">🛡️</div><h3>Iron Golem</h3><p>Unkillable tank. Slow but mighty.</p>
+          <small>HP ★★★★★ · ATK ★★ · SPD ★★</small>
+        </div>
+      </div>
+      <button id="play-btn">▶ &nbsp;ENTER THE RIFT</button>
+      <div class="controls-grid">
+        <div><b>Right-click</b> move / attack</div><div><b>Q / W / E / R</b> abilities</div>
+        <div><b>A + click</b> attack-move</div><div><b>Space</b> center camera</div>
+        <div><b>Wheel</b> zoom · <b>Drag</b> pan</div><div><b>P</b> shop · <b>B</b> recall</div>
+      </div>
+      <div class="objective">⚔️ Push with your minions, destroy the <span class="red">RED NEXUS</span> and defend your <span class="blue">BLUE NEXUS</span>. Towers shoot traitors — dive carefully!</div>
+    </div>
+  </div>
+
+  <!-- End screen -->
+  <div id="endscreen" class="hidden">
+    <div class="menu-inner">
+      <div id="end-title">VICTORY</div>
+      <div id="end-stats"></div>
+      <button id="again-btn">↻ &nbsp;PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <div id="loading">Loading Rift Arena…</div>
+</div>
+<script type="module" src="game.js"></script>
+</body>
+</html>
