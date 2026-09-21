@@ -1,0 +1,56 @@
+/* Minecraft Racing — blocky UI */
+@font-face { font-family: 'mc'; }
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#87ceeb;font-family:'Courier New',monospace;image-rendering:pixelated}
+#game-container,#game-container canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hidden{display:none!important}
+
+/* pixel panels */
+.mc-panel{background:rgba(20,20,20,.82);border:3px solid #000;box-shadow:inset 0 0 0 2px #8b8b8b,inset 0 0 0 4px #373737;color:#fff;font-weight:bold;text-shadow:2px 2px 0 #000;letter-spacing:1px}
+
+#hud{position:absolute;inset:0;pointer-events:none;z-index:5}
+#hud-top{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:10px}
+#hud-top .mc-panel{padding:8px 16px;font-size:18px;white-space:nowrap}
+#pos-box{color:#ffff54}
+#speed-box{position:absolute;right:16px;bottom:16px;padding:8px 14px;font-size:24px}
+#speed-box small{font-size:12px;color:#7dff7d}
+#minimap{position:absolute;left:16px;bottom:16px;background:rgba(0,0,0,.65);border:3px solid #000;box-shadow:inset 0 0 0 2px #555;border-radius:6px}
+#pickup-msg{position:absolute;top:70px;left:50%;transform:translateX(-50%);font-size:22px;font-weight:bold;color:#54ff54;text-shadow:2px 2px 0 #003300;opacity:0;transition:opacity .2s}
+
+#countdown{position:absolute;top:34%;left:50%;transform:translate(-50%,-50%);font-size:110px;font-weight:900;color:#ffff54;text-shadow:4px 4px 0 #3f3f00,8px 8px 0 rgba(0,0,0,.5);z-index:6;pointer-events:none}
+#go-flash{position:absolute;inset:0;background:rgba(120,255,120,.22);opacity:0;pointer-events:none;z-index:5;transition:opacity .5s}
+
+/* menu — dirt background */
+#menu{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background-color:#5a3a22;background-image:repeating-conic-gradient(#6b4a2e 0% 25%,#5a3a22 0% 50%);background-size:48px 48px;box-shadow:inset 0 0 200px rgba(0,0,0,.7)}
+#menu-inner{text-align:center;max-width:640px;padding:30px 34px;background:rgba(0,0,0,.55);border:4px solid #000;box-shadow:inset 0 0 0 3px #8b8b8b}
+#title-sub{color:#7dff7d;font-weight:bold;letter-spacing:4px;font-size:15px;text-shadow:2px 2px 0 #000;margin-bottom:6px}
+#title{font-size:64px;line-height:.95;font-weight:900;color:#e8e8e8;text-shadow:3px 3px 0 #3f3f3f,6px 6px 0 #000;letter-spacing:2px}
+#title::first-line{color:#54ff54}
+#menu-desc{margin:16px 0;color:#fff;font-size:14px;line-height:2;text-shadow:1px 1px 0 #000}
+.key{background:#c6c6c6;color:#222;border:2px solid #000;box-shadow:inset 2px 2px 0 #fff,inset -2px -2px 0 #555;padding:1px 8px;font-weight:bold}
+#start-btn{font-family:inherit;font-size:22px;font-weight:bold;color:#fff;background:#5da832 url('');border:3px solid #000;box-shadow:inset 2px 2px 0 rgba(255,255,255,.5),inset -2px -2px 0 rgba(0,0,0,.4);padding:14px 30px;cursor:pointer;text-shadow:2px 2px 0 #1e3d0f;letter-spacing:1px}
+#start-btn:hover{background:#6cc137;transform:scale(1.03)}
+#controls-hint{margin-top:12px;color:#c9c9c9;font-size:12px}
+#best-line{margin-top:6px;color:#ffff54;font-size:13px;font-weight:bold}
+
+#finish{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55)}
+#finish-inner{text-align:center;padding:28px 36px;min-width:340px}
+#finish-title{font-size:44px;color:#ffff54;margin-bottom:4px}
+#finish-sub{color:#cfc;font-size:14px;margin-bottom:14px}
+#finish-table{margin:0 auto 16px;color:#fff;font-size:15px;line-height:1.9;background:rgba(0,0,0,.4);padding:10px 18px;border:2px solid #555}
+#restart-btn{font-family:inherit;font-size:18px;font-weight:bold;padding:12px 26px;background:#5da832;color:#fff;border:3px solid #000;cursor:pointer;text-shadow:2px 2px 0 #1e3d0f}
+#restart-btn:hover{background:#6cc137}
+
+#touch{position:absolute;bottom:90px;left:0;right:0;z-index:8;display:flex;justify-content:space-between;padding:0 18px;pointer-events:none}
+.t-row{display:flex;gap:12px}
+.t-btn{pointer-events:auto;width:64px;height:64px;font-size:26px;background:rgba(30,30,30,.6);color:#fff;border:3px solid #000;border-radius:10px}
+.t-btn:active{background:#5da832}
+
+#loading{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:#1a1a1a;color:#7dff7d;font-size:22px;font-weight:bold}
+
+@media(max-width:700px){
+  #title{font-size:44px}
+  #hud-top .mc-panel{font-size:14px;padding:6px 10px}
+  #minimap{width:110px;height:110px}
+  #countdown{font-size:70px}
+}

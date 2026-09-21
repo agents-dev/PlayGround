@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Minecraft Racing — Blocky Kart Grand Prix</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%236abe30'/><rect x='3' y='3' width='10' height='5' fill='%23222'/><rect x='3' y='10' width='3' height='3' fill='%23111'/><rect x='10' y='10' width='3' height='3' fill='%23111'/></svg>" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="game-container"></div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="hud-top">
+    <div class="mc-panel" id="lap-box">LAP <span id="lap">1</span>/3</div>
+    <div class="mc-panel" id="time-box">⏱ <span id="time">0:00.0</span></div>
+    <div class="mc-panel" id="pos-box">POS <span id="pos">4</span>/4</div>
+  </div>
+  <div id="speed-box" class="mc-panel"><span id="speed">0</span><small> km/h</small></div>
+  <canvas id="minimap" width="170" height="170"></canvas>
+  <div id="pickup-msg"></div>
+</div>
+
+<div id="countdown"></div>
+<div id="go-flash"></div>
+
+<!-- Start menu -->
+<div id="menu">
+  <div id="menu-inner">
+    <div id="title-sub">BLOCKY KART GRAND PRIX</div>
+    <h1 id="title">MINECRAFT<br/>RACING</h1>
+    <div id="menu-desc">
+      ⛏ 3 laps on a voxel speedway &bull; beat 3 rival miners ⛏<br/>
+      <span class="key">W A S D</span> / <span class="key">◀ ▲ ▼ ▶</span> to drive &nbsp;•&nbsp; gold pads = <b>BOOST</b> &nbsp;•&nbsp; emeralds = +points
+    </div>
+    <button id="start-btn">▶ &nbsp;CLICK TO RACE&nbsp; ◀</button>
+    <div id="controls-hint">Mobile: use the on-screen ◀ ▶ ▲ ▼ pads</div>
+    <div id="best-line">Best lap: <span id="menu-best">--</span></div>
+  </div>
+</div>
+
+<!-- Finish overlay -->
+<div id="finish" class="hidden">
+  <div id="finish-inner" class="mc-panel">
+    <h2 id="finish-title">🏆 YOU WIN!</h2>
+    <div id="finish-sub">You conquered the Overworld Speedway!</div>
+    <div id="finish-table"></div>
+    <button id="restart-btn">↻ RACE AGAIN</button>
+  </div>
+</div>
+
+<!-- Touch controls -->
+<div id="touch" class="hidden">
+  <div class="t-row">
+    <button class="t-btn" id="t-left">◀</button>
+    <button class="t-btn" id="t-right">▶</button>
+  </div>
+  <div class="t-row">
+    <button class="t-btn" id="t-down">▼</button>
+    <button class="t-btn" id="t-up">▲</button>
+  </div>
+</div>
+
+<div id="loading">⛏ Loading blocks…</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module" src="game.js"></script>
+</body>
+</html>
