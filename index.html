@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liero-like — Worms-Style 2D Shooter</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>Liero-like <span>worms-style 2D shooter</span></h1>
+    <div id="scorebar">
+      <div class="score p1"><b id="name1">P1</b> <i id="hp1">100</i> <em id="lives1">❤×5</em></div>
+      <div id="timer">--</div>
+      <div class="score p2"><em id="lives2">❤×5</em> <i id="hp2">100</i> <b id="name2">CPU</b></div>
+    </div>
+  </header>
+  <div id="wrap">
+    <canvas id="game" width="960" height="540"></canvas>
+    <div id="menu">
+      <h2>Worms-style arena</h2>
+      <p>Destructible terrain · 3 weapons · jetpacks · first to take all 5 lives wins.</p>
+      <label>Mode
+        <select id="mode">
+          <option value="ai" selected>Play vs CPU</option>
+          <option value="2p">2 Players (local)</option>
+        </select>
+      </label>
+      <button id="playBtn">Play</button>
+      <button id="helpBtn" type="button">Controls &amp; help</button>
+      <div id="help" hidden>
+        <p><b>P1 (blue):</b> A/D move · W jump · hold S jetpack · aim with mouse · click or Space shoots · 1/2/3 weapons.</p>
+        <p><b>P2 (red, local):</b> ←/→ move · . jump · hold ↓ jetpack · auto-aims at P1 (tweak with ↑/↓) · Enter or / shoots · , switches weapon.</p>
+        <p><b>Weapons:</b> Rifle (fast), Scatter (shotgun), Lobber (bouncing grenade, big holes). Green crates = +25 HP / fuel.</p>
+      </div>
+    </div>
+    <div id="over" hidden>
+      <h2 id="overTitle">P1 wins!</h2>
+      <p id="overSub"></p>
+      <button id="againBtn" type="button">Restart</button>
+    </div>
+  </div>
+  <footer>
+    <span>P1: A/D + W + mouse + Space · 1/2/3</span>
+    <span>P2: ←/→ + . + Enter · auto-aim</span>
+    <span id="status">ready</span>
+  </footer>
+</div>
+<script src="game.js"></script>
+</body>
+</html>
