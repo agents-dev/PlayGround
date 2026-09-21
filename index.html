@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>PG: Battlegrounds 3D — Battle Royale</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="style.css" />
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="crosshair"><div class="dot"></div></div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="topbar">
+    <div id="aliveBox">ALIVE <b id="alive">30</b></div>
+    <div id="zoneBox">ZONE <b id="zoneTimer">--</b></div>
+    <div id="killBox">KILLS <b id="kills">0</b></div>
+  </div>
+  <canvas id="minimap" width="170" height="170"></canvas>
+  <div id="feed"></div>
+  <div id="bottombar">
+    <div id="hpWrap">
+      <div id="hpBar"><div id="hpFill"></div></div>
+      <div id="hpText">100</div>
+      <div id="armorText"></div>
+    </div>
+    <div id="weaponBox">
+      <div id="weaponName">FISTS</div>
+      <div id="ammo">--</div>
+      <div id="hint">Click lock mouse · WASD move · R reload · E pickup · Q medkit (x<span id="meds">0</span>) · RMB aim</div>
+    </div>
+  </div>
+  <div id="pickupPrompt" class="hidden"></div>
+  <div id="hitmarker"></div>
+  <div id="dmgVignette"></div>
+  <div id="zoneVignette"></div>
+</div>
+
+<!-- touch controls -->
+<div id="touchUI" class="hidden">
+  <div id="stick"><div id="stickKnob"></div></div>
+  <div id="fireBtn">FIRE</div>
+  <div id="jumpBtn">JUMP</div>
+</div>
+
+<!-- Menu -->
+<div id="menu" class="overlay">
+  <div class="panel">
+    <div class="badge">3D THIRD-PERSON BATTLE ROYALE</div>
+    <h1>PG<span>: BATTLEGROUNDS 3D</span></h1>
+    <p class="sub">Drop in. Loot up. Survive the zone. Last one standing wins the <b>Chicken Dinner</b>.</p>
+    <div class="cards">
+      <div class="card"><b>WASD + Mouse</b><span>Move · click canvas to lock aim · Shift sprint · Space jump</span></div>
+      <div class="card"><b>Click / RMB</b><span>Shoot (hold for auto) · right-click to aim down sights</span></div>
+      <div class="card"><b>E / R / Q</b><span>Pickup · Reload · Medkit</span></div>
+    </div>
+    <div class="row">
+      <label>Bots <input id="botCount" type="number" value="19" min="1" max="39" /></label>
+    </div>
+    <button id="dropBtn">🪂 DEPLOY — PICK DROP ON MAP</button>
+    <p class="tiny">Tip: houses = loot. White ring = next safe zone. Blue wall = death.</p>
+  </div>
+</div>
+
+<!-- Drop picker -->
+<div id="dropScreen" class="overlay hidden">
+  <div class="panel">
+    <h2>CHOOSE YOUR DROP</h2>
+    <p class="sub">Plane path is drawn. Click a spot near loot towns — but everyone else drops too.</p>
+    <canvas id="dropMap" width="420" height="420"></canvas>
+    <button id="randomDrop">Random drop</button>
+  </div>
+</div>
+
+<!-- End screen -->
+<div id="endScreen" class="overlay hidden">
+  <div class="panel">
+    <h1 id="endTitle">WINNER WINNER!</h1>
+    <p id="endSub" class="sub"></p>
+    <div id="stats"></div>
+    <button id="againBtn">PLAY AGAIN</button>
+  </div>
+</div>
+
+<div id="toast" class="hidden"></div>
+<div id="nogl" class="overlay hidden"><div class="panel"><h2>WebGL unavailable</h2><p class="sub">This game needs WebGL. Try a browser with hardware acceleration enabled.</p></div></div>
+
+<script type="module" src="game.js"></script>
+</body>
+</html>
