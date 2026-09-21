@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Rift Legends 3D — LoL-inspired MOBA</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-testid="rift-legends-3d">
+<div id="app">
+  <canvas id="scene"></canvas>
+
+  <div id="topbar">
+    <div class="team blue"><span id="blue-kills">0</span><label>BLUE</label><div class="nexus-mini"><i id="blue-nexus-hp"></i></div></div>
+    <div id="match-clock">00:00</div>
+    <div class="team red"><div class="nexus-mini"><i id="red-nexus-hp"></i></div><label>RED</label><span id="red-kills">0</span></div>
+  </div>
+
+  <div id="killfeed"></div>
+  <canvas id="minimap" width="168" height="168"></canvas>
+  <div id="quest">Destroy the red Nexus! <b>Right-click / Tap</b> to move.</div>
+
+  <div id="shop">
+    <h3>Shop <span id="gold">0g</span></h3>
+    <button data-item="blade">⚔️ Blade +25 AD <b>600g</b><small>Q,R hit harder, faster autos</small></button>
+    <button data-item="tome">🔮 Tome +35 AP <b>650g</b><small>Abilities scale harder</small></button>
+    <button data-item="heart">🛡️ Heart +350 HP <b>700g</b><small>Survive tower dives</small></button>
+  </div>
+
+  <div id="hud">
+    <div id="portrait">🛡️<span id="level">1</span></div>
+    <div id="bars">
+      <div id="hp-wrap"><div id="hp"></div><span id="hp-text"></span></div>
+      <div id="mp-wrap"><div id="mp"></div><span id="mp-text"></span></div>
+      <div id="xp-wrap"><div id="xp"></div></div>
+      <div id="abilities">
+        <button data-ab="q"><b>Q</b><span class="key">Q</span><i></i></button>
+        <button data-ab="w"><b>W</b><span class="key">W</span><i></i></button>
+        <button data-ab="e"><b>E</b><span class="key">E</span><i></i></button>
+        <button data-ab="r"><b>R</b><span class="key">R</span><i></i></button>
+      </div>
+      <div id="stats-line"><span id="kda">0 / 0 / 0</span> · <span id="cs">0 CS</span> · <span id="champ-name">Vanguard</span></div>
+    </div>
+  </div>
+
+  <div id="dmg-layer"></div>
+  <div id="target-frame" class="hidden"><label id="target-name">Tower</label><div><i id="target-hp"></i></div></div>
+
+  <div id="start-screen">
+    <div class="panel">
+      <p class="eyebrow">LEAGUE-INSPIRED · THREE.JS · ORIGINAL ASSETS</p>
+      <h1>RIFT LEGENDS <span>3D</span></h1>
+      <p class="sub">A tiny Summoner's-Rift-like MOBA. Push the lane with your minion wave, dive towers, and smash the red Nexus. All models are original low-poly — inspired by, not ripped from, League of Legends.</p>
+      <div id="champ-select">
+        <button class="champ-card selected" data-champ="vanguard">
+          <div class="emoji">🛡️</div><h2>Kael, Vanguard</h2>
+          <p>Fighter · melee · tanky. Spin, shield, dash, slam.</p>
+          <ul><li>HP ★★★★★</li><li>ATK ★★★★</li><li>RNG ★</li></ul>
+        </button>
+        <button class="champ-card" data-champ="arcanist">
+          <div class="emoji">🔥</div><h2>Lyra, Arcanist</h2>
+          <p>Mage · ranged burst. Orb, snare, blink, meteor.</p>
+          <ul><li>HP ★★</li><li>ATK ★★★★★</li><li>RNG ★★★★</li></ul>
+        </button>
+        <button class="champ-card" data-champ="ranger">
+          <div class="emoji">❄️</div><h2>Asha, Frost Ranger</h2>
+          <p>Marksman · long range. Volley, trap, dash, arrow.</p>
+          <ul><li>HP ★★★</li><li>ATK ★★★★</li><li>RNG ★★★★★</li></ul>
+        </button>
+      </div>
+      <div class="controls-grid">
+        <div><b>Move / Attack</b><span>Right-click or tap · right-click enemy = focus</span></div>
+        <div><b>Abilities</b><span>Q · W · E · R (tap buttons on mobile)</span></div>
+        <div><b>Camera</b><span>Mouse wheel zoom · hold middle-mouse drag to orbit · Space centers</span></div>
+        <div><b>Win</b><span>Destroy red Nexus at top-right. Defend yours!</span></div>
+      </div>
+      <button id="play-btn">▶ &nbsp;ENTER THE RIFT</button>
+      <p class="tiny">Fan-made homage. Not affiliated with Riot Games. All art + names original.</p>
+    </div>
+  </div>
+
+  <div id="end-screen" class="hidden">
+    <div class="panel">
+      <h1 id="end-title">VICTORY</h1>
+      <p id="end-sub"></p>
+      <div id="end-stats"></div>
+      <button id="restart-btn">↻ Play again</button>
+    </div>
+  </div>
+  <div id="respawn" class="hidden">Respawning in <b id="respawn-t">5</b>s…</div>
+</div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
