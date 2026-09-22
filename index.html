@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Neon Noughts — Tic-Tac-Toe</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23070b18'/%3E%3Ctext x='8' y='23' font-size='16' font-weight='bold' fill='%2300f0ff'%3EX%3C/text%3E%3Ctext x='17' y='23' font-size='16' font-weight='bold' fill='%23ff2fd6'%3EO%3C/text%3E%3C/svg%3E" />
+<style>
+  :root {
+    --bg: #070b18;
+    --bg2: #0b1226;
+    --panel: rgba(15, 23, 48, 0.85);
+    --line: rgba(0, 255, 255, 0.14);
+    --cyan: #00f0ff;
+    --magenta: #ff2fd6;
+    --yellow: #ffe74c;
+    --text: #eaf6ff;
+    --muted: #8ea0c2;
+    --x-glow: 0 0 8px var(--cyan), 0 0 22px rgba(0,240,255,.8), 0 0 44px rgba(0,240,255,.35);
+    --o-glow: 0 0 8px var(--magenta), 0 0 22px rgba(255,47,214,.8), 0 0 44px rgba(255,47,214,.35);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, Arial, sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(900px 500px at 15% -5%, rgba(0,240,255,.14), transparent 60%),
+      radial-gradient(800px 500px at 90% 10%, rgba(255,47,214,.14), transparent 60%),
+      radial-gradient(700px 600px at 50% 110%, rgba(80,80,255,.16), transparent 60%),
+      linear-gradient(180deg, var(--bg), var(--bg2));
+    min-height: 100svh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 14px 28px;
+    touch-action: manipulation;
+    overscroll-behavior: none;
+  }
+  .grid-bg {
+    position: fixed; inset: 0; pointer-events: none; opacity: .5;
+    background-image: linear-gradient(rgba(0,240,255,.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,240,255,.06) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(70% 70% at 50% 40%, black, transparent 90%);
+  }
+  .app {
+    width: min(480px, 100%);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    padding: 22px 20px 20px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.04) inset, 0 20px 80px rgba(0,0,0,.55), 0 0 60px rgba(0,240,255,.08);
+    backdrop-filter: blur(12px);
+    position: relative;
+    overflow: hidden;
+  }
+  .app::before {
+    content: ""; position: absolute; inset: -1px; border-radius: 24px; pointer-events: none;
+    background: linear-gradient(135deg, rgba(0,240,255,.35), transparent 30%, transparent 70%, rgba(255,47,214,.35));
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    padding: 1px; opacity: .7;
+  }
+  header { text-align: center; margin-bottom: 14px; }
+  h1 {
+    margin: 0; font-size: clamp(26px, 6vw, 34px); letter-spacing: .12em; font-weight: 900;
+    background: linear-gradient(90deg, var(--cyan), #9ff, var(--magenta));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 14px rgba(0,240,255,.45));
+    text-transform: uppercase;
+  }
+  .subtitle { color: var(--muted); font-size: 13px; letter-spacing: .18em; text-transform: uppercase; margin-top: 6px; }
+  .turn-bar {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0 8px;
+  }
+  .player {
+    border: 1px solid rgba(255,255,255,.1); border-radius: 14px; padding: 10px 12px;
+    display: flex; align-items: center; gap: 10px; opacity: .55; transition: all .25s ease;
+    background: rgba(255,255,255,.03);
+  }
+  .player.active { opacity: 1; transform: translateY(-1px); }
+  .player-x.active { border-color: rgba(0,240,255,.6); box-shadow: 0 0 18px rgba(0,240,255,.25), inset 0 0 18px rgba(0,240,255,.08); }
+  .player-o.active { border-color: rgba(255,47,214,.6); box-shadow: 0 0 18px rgba(255,47,214,.25), inset 0 0 18px rgba(255,47,214,.08); }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
+    font-weight: 900; font-size: 20px; flex: none;
+  }
+  .player-x .avatar { color: var(--cyan); text-shadow: var(--x-glow); border: 1px solid rgba(0,240,255,.4); background: rgba(0,240,255,.08); }
+  .player-o .avatar { color: var(--magenta); text-shadow: var(--o-glow); border: 1px solid rgba(255,47,214,.4); background: rgba(255,47,214,.08); }
+  .player .meta { line-height: 1.1; }
+  .player .name { font-size: 13px; font-weight: 800; letter-spacing: .06em; }
+  .player .score { font-size: 12px; color: var(--muted); }
+  .status {
+    text-align: center; min-height: 30px; margin: 8px 0 12px; font-weight: 800; letter-spacing: .04em;
+    font-size: 17px;
+  }
+  .status.x-turn { color: var(--cyan); text-shadow: var(--x-glow); }
+  .status.o-turn { color: var(--magenta); text-shadow: var(--o-glow); }
+  .status.win { color: var(--yellow); text-shadow: 0 0 10px rgba(255,231,76,.9), 0 0 30px rgba(255,231,76,.4); animation: pop .35s ease; }
+  .status.draw { color: #fff; text-shadow: 0 0 12px rgba(255,255,255,.6); }
+  @keyframes pop { 0% { transform: scale(.85); } 60% { transform: scale(1.06); } 100% { transform: scale(1); } }
+  .board-wrap { position: relative; }
+  .board {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; position: relative;
+  }
+  .cell {
+    appearance: none; border: 1px solid rgba(0,240,255,.18); background: rgba(8,14,32,.9);
+    border-radius: 18px; aspect-ratio: 1/1; min-height: 0;
+    font-size: clamp(44px, 16vw, 64px); font-weight: 900; line-height: 1;
+    color: var(--text); cursor: pointer;
+    display: grid; place-items: center;
+    transition: transform .08s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease;
+    touch-action: manipulation; user-select: none; -webkit-user-select: none;
+    min-width: 44px; min-height: 44px;
+    position: relative;
+  }
+  .cell:not(:disabled):hover { border-color: rgba(0,240,255,.5); box-shadow: 0 0 18px rgba(0,240,255,.2); }
+  .cell:not(:disabled):active { transform: scale(.96); }
+  .cell:disabled { cursor: default; }
+  .cell .mark { display: inline-block; animation: draw .22s ease; }
+  @keyframes draw { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .cell.x { color: var(--cyan); text-shadow: var(--x-glow); }
+  .cell.o { color: var(--magenta); text-shadow: var(--o-glow); }
+  .cell.win {
+    border-color: rgba(255,231,76,.9) !important;
+    background: rgba(255,231,76,.1) !important;
+    box-shadow: 0 0 18px rgba(255,231,76,.55), 0 0 46px rgba(255,231,76,.25), inset 0 0 22px rgba(255,231,76,.15) !important;
+    animation: winPulse 1s ease-in-out infinite;
+  }
+  .cell.win .mark { color: var(--yellow); text-shadow: 0 0 10px rgba(255,231,76,1), 0 0 30px rgba(255,231,76,.6); }
+  @keyframes winPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+  .board.locked .cell:not(.win) { opacity: .75; }
+  /* SVG winning line overlay */
+  #winLine { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; opacity: 0; transition: opacity .2s ease; }
+  #winLine.show { opacity: 1; }
+  #winLine line {
+    stroke: var(--yellow); stroke-width: 6; stroke-linecap: round;
+    filter: drop-shadow(0 0 6px rgba(255,231,76,1)) drop-shadow(0 0 16px rgba(255,231,76,.7));
+    stroke-dasharray: 400; stroke-dashoffset: 400; transition: stroke-dashoffset .45s ease;
+  }
+  #winLine.show line { stroke-dashoffset: 0; }
+  .controls { display: flex; gap: 10px; margin-top: 16px; }
+  button.action {
+    flex: 1; border-radius: 14px; padding: 14px 12px; min-height: 48px;
+    font-size: 15px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase;
+    border: 1px solid transparent; cursor: pointer; touch-action: manipulation;
+    transition: transform .08s ease, box-shadow .2s ease, filter .2s ease;
+  }
+  button.action:active { transform: scale(.98); }
+  #restartBtn {
+    color: #04121a; background: linear-gradient(90deg, var(--cyan), #7cfff4);
+    box-shadow: 0 0 20px rgba(0,240,255,.45), 0 6px 24px rgba(0,240,255,.25);
+  }
+  #restartBtn:hover { filter: brightness(1.06); }
+  #resetScoreBtn {
+    color: var(--text); background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.14);
+  }
+  .hint { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 12px; letter-spacing: .02em; }
+  footer { text-align: center; color: rgba(142,160,194,.7); font-size: 11px; margin-top: 10px; letter-spacing: .14em; text-transform: uppercase; }
+  @media (max-width: 380px) {
+    .app { padding: 18px 14px 16px; }
+    .board { gap: 8px; }
+    .cell { border-radius: 14px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="grid-bg" aria-hidden="true"></div>
+<main class="app" role="main" aria-label="Neon Noughts tic-tac-toe game">
+  <header>
+    <h1>Neon Noughts</h1>
+    <div class="subtitle">Tic-Tac-Toe &middot; 2 Players &middot; Local</div>
+  </header>
+
+  <div class="turn-bar" role="status" aria-live="polite">
+    <div class="player player-x active" id="cardX">
+      <div class="avatar" aria-hidden="true">X</div>
+      <div class="meta"><div class="name">Player X</div><div class="score"><span id="scoreX">0</span> wins</div></div>
+    </div>
+    <div class="player player-o" id="cardO">
+      <div class="avatar" aria-hidden="true">O</div>
+      <div class="meta"><div class="name">Player O</div><div class="score"><span id="scoreO">0</span> wins</div></div>
+    </div>
+  </div>
+
+  <div class="status x-turn" id="status" aria-live="polite">Player X's turn</div>
+
+  <div class="board-wrap">
+    <div class="board" id="board" role="grid" aria-label="Tic-tac-toe board"></div>
+    <svg id="winLine" viewBox="0 0 300 300" preserveAspectRatio="none" aria-hidden="true">
+      <line id="winLineEl" x1="0" y1="0" x2="0" y2="0" />
+    </svg>
+  </div>
+
+  <div class="controls">
+    <button class="action" id="restartBtn" type="button">Restart</button>
+    <button class="action" id="resetScoreBtn" type="button">Reset score</button>
+  </div>
+  <div class="hint">Draws: <strong id="draws">0</strong> &nbsp;&middot;&nbsp; Tap a square to place your mark. First to 3 in a row wins.</div>
+  <footer>Dark neon &middot; touch ready &middot; 44px+ targets</footer>
+</main>
+
+<script>
+(function () {
+  var WINS = [
+    [0,1,2],[3,4,5],[6,7,8],
+    [0,3,6],[1,4,7],[2,5,8],
+    [0,4,8],[2,4,6]
+  ];
+  // win-line coordinates in 300x300 viewBox (cell centers at 50/150/250)
+  var LINES = {
+    '0,1,2': [20,50,280,50], '3,4,5': [20,150,280,150], '6,7,8': [20,250,280,250],
+    '0,3,6': [50,20,50,280], '1,4,7': [150,20,150,280], '2,5,8': [250,20,250,280],
+    '0,4,8': [28,28,272,272], '2,4,6': [272,28,28,272]
+  };
+  var boardEl = document.getElementById('board');
+  var statusEl = document.getElementById('status');
+  var cardX = document.getElementById('cardX');
+  var cardO = document.getElementById('cardO');
+  var scoreXEl = document.getElementById('scoreX');
+  var scoreOEl = document.getElementById('scoreO');
+  var drawsEl = document.getElementById('draws');
+  var winSvg = document.getElementById('winLine');
+  var winEl = document.getElementById('winLineEl');
+  var restartBtn = document.getElementById('restartBtn');
+  var resetScoreBtn = document.getElementById('resetScoreBtn');
+
+  var cells = [];
+  var state = { board: Array(9).fill(''), turn: 'X', over: false, winner: null, winCombo: null };
+  var scores = { X: 0, O: 0, D: 0 };
+
+  function build() {
+    boardEl.innerHTML = '';
+    cells = [];
+    for (var i = 0; i < 9; i++) {
+      (function (idx) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'cell';
+        b.setAttribute('role', 'gridcell');
+        b.setAttribute('aria-label', 'Cell ' + (idx + 1));
+        b.dataset.index = idx;
+        // pointerup + click: click alone covers touch+mouse reliably; guard double-fire
+        b.addEventListener('click', function () { play(idx); });
+        boardEl.appendChild(b);
+        cells.push(b);
+      })(i);
+    }
+  }
+
+  function setStatus(msg, cls) {
+    statusEl.textContent = msg;
+    statusEl.className = 'status ' + cls;
+  }
+
+  function render() {
+    for (var i = 0; i < 9; i++) {
+      var v = state.board[i];
+      var c = cells[i];
+      c.classList.toggle('x', v === 'X');
+      c.classList.toggle('o', v === 'O');
+      c.innerHTML = v ? '<span class="mark">' + v + '</span>' : '';
+      c.disabled = !!v || state.over;
+      c.setAttribute('aria-label', 'Cell ' + (i + 1) + (v ? ', ' + v : ', empty'));
+    }
+    cardX.classList.toggle('active', state.turn === 'X' && !state.over);
+    cardO.classList.toggle('active', state.turn === 'O' && !state.over);
+    scoreXEl.textContent = scores.X;
+    scoreOEl.textContent = scores.O;
+    drawsEl.textContent = scores.D;
+  }
+
+  function checkWin(b) {
+    for (var k = 0; k < WINS.length; k++) {
+      var a = WINS[k][0], c1 = WINS[k][1], d = WINS[k][2];
+      if (b[a] && b[a] === b[c1] && b[a] === b[d]) return WINS[k];
+    }
+    return null;
+  }
+
+  function showWinLine(combo) {
+    var key = combo.join(',');
+    var pts = LINES[key];
+    if (!pts) return;
+    winEl.setAttribute('x1', pts[0]); winEl.setAttribute('y1', pts[1]);
+    winEl.setAttribute('x2', pts[2]); winEl.setAttribute('y2', pts[3]);
+    requestAnimationFrame(function () { winSvg.classList.add('show'); });
+  }
+  function hideWinLine() {
+    winSvg.classList.remove('show');
+  }
+
+  function play(i) {
+    if (state.over || state.board[i]) return;
+    state.board[i] = state.turn;
+    var combo = checkWin(state.board);
+    if (combo) {
+      state.over = true; state.winner = state.turn; state.winCombo = combo;
+      scores[state.turn]++;
+      combo.forEach(function (idx) { cells[idx].classList.add('win'); });
+      boardEl.classList.add('locked');
+      showWinLine(combo);
+      setStatus('Player ' + state.turn + ' wins!', 'win');
+      render();
+      // keep winning cells enabled-styled but disabled
+      return;
+    }
+    if (state.board.every(Boolean)) {
+      state.over = true; state.winner = 'draw';
+      scores.D++;
+      boardEl.classList.add('locked');
+      setStatus("It's a draw!", 'draw');
+      render();
+      return;
+    }
+    state.turn = state.turn === 'X' ? 'O' : 'X';
+    setStatus("Player " + state.turn + "'s turn", state.turn === 'X' ? 'x-turn' : 'o-turn');
+    render();
+  }
+
+  function restart() {
+    state = { board: Array(9).fill(''), turn: state.winner === 'X' ? 'O' : state.winner === 'O' ? 'X' : (state.turn === 'X' ? 'X' : state.turn), over: false, winner: null, winCombo: null };
+    // Simpler & fair: alternate starter after a win, keep starter after draw/abort
+    boardEl.classList.remove('locked');
+    hideWinLine();
+    cells.forEach(function (c) { c.classList.remove('win'); });
+    setStatus("Player " + state.turn + "'s turn", state.turn === 'X' ? 'x-turn' : 'o-turn');
+    render();
+  }
+
+  restartBtn.addEventListener('click', restart);
+  resetScoreBtn.addEventListener('click', function () {
+    scores = { X: 0, O: 0, D: 0 };
+    restart();
+  });
+
+  build();
+  setStatus("Player X's turn", 'x-turn');
+  render();
+
+  // Expose tiny hooks for automated verification
+  window.__neon = {
+    state: state, scores: scores,
+    play: play, restart: restart,
+    get board() { return state.board; }
+  };
+})();
+</script>
+</body>
+</html>
