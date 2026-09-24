@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#87c6fa" />
+  <title>Blocklands — A tiny world, all yours</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <main class="game-shell">
+    <div id="scene" aria-label="Blocklands 3D world"></div>
+    <div class="sky-wash"></div>
+
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Blocklands home"><span class="brand-cube">✦</span><span>blocklands</span><span class="brand-dot">.</span></a>
+      <div class="world-pill"><span class="live-dot"></span><span id="world-name">SUNNY MEADOWS</span><span class="pill-divider"></span><span id="time-label">10:24 AM</span></div>
+      <button class="icon-button sound-button" id="sound-toggle" aria-label="Toggle sound">♫</button>
+    </header>
+
+    <section class="coordinates"><span class="coord-label">POSITION</span><span id="coordinates">X 0 &nbsp; Y 4 &nbsp; Z 0</span><span class="coord-separator"></span><span class="weather-icon">☀</span><span>Clear skies</span></section>
+
+    <div class="crosshair" aria-hidden="true"><span></span><span></span></div>
+    <section class="objective-card"><div class="objective-icon">✧</div><div><div class="objective-title">A little room to roam</div><div class="objective-copy">Your world is ready. What will you make?</div></div><button id="objective-close" aria-label="Dismiss objective">×</button></section>
+
+    <div class="interaction-hint" id="interaction-hint"><span class="mouse-symbol">⌖</span> CLICK TO PLAY</div>
+
+    <section class="hotbar-wrap" aria-label="Inventory">
+      <div class="hotbar-label">QUICK INVENTORY <span>1—6</span></div>
+      <div class="hotbar" id="hotbar"></div>
+      <div class="tool-hint"><span>W A S D</span> move <i>·</i> <span>SPACE</span> jump <i>·</i> <span>CLICK</span> mine <i>·</i> <span>RIGHT CLICK</span> place <i>·</i> <span>ESC</span> pause</div>
+    </section>
+
+    <div class="side-actions"><button class="side-button" id="map-button"><span>▦</span> WORLD MAP</button><button class="side-button" id="inventory-button"><span>▤</span> INVENTORY <kbd>E</kbd></button></div>
+
+    <section class="overlay" id="start-screen">
+      <div class="overlay-scrim"></div>
+      <div class="start-content">
+        <div class="eyebrow"><span>✦</span> YOUR OWN LITTLE CORNER OF THE WORLD <span>✦</span></div>
+        <h1>Make room<br />for <span>wonder.</span></h1>
+        <p class="start-description">A world built one block at a time.<br />Take a breath, look around, make something yours.</p>
+        <button class="play-button" id="play-button"><span class="play-icon">▶</span><span>STEP INTO THE WORLD</span><span class="button-arrow">↗</span></button>
+        <div class="start-footnote"><span class="tiny-spark">✷</span> No rush. No rules. Just you and the blocks. <span class="tiny-spark">✷</span></div>
+        <div class="control-chips"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to explore</span><span><kbd>SPACE</kbd> to hop</span></div>
+      </div>
+      <div class="version-label">BLOCKLANDS <span>✳</span> 01.01</div>
+    </section>
+
+    <section class="pause-overlay hidden" id="pause-screen">
+      <div class="pause-card"><div class="pause-mark">Ⅱ</div><div class="eyebrow">TAKE YOUR TIME</div><h2>Taking a little<br /><span>breather?</span></h2><p>Your world will be right here.</p><button id="resume-button" class="play-button"><span class="play-icon">▶</span><span>BACK TO EXPLORING</span></button><div class="pause-footnote">PRESS <kbd>ESC</kbd> TO RESUME</div></div>
+    </section>
+
+    <section class="inventory-overlay hidden" id="inventory-screen">
+      <div class="inventory-card"><div class="inventory-heading"><div><span class="eyebrow">YOUR LITTLE COLLECTION</span><h2>Inventory</h2></div><button id="inventory-close" class="icon-button">×</button></div><p>Pick a block to make it your active tool.</p><div class="inventory-grid" id="inventory-grid"></div><div class="inventory-footer"><kbd>E</kbd> or <kbd>ESC</kbd> to close</div></div>
+    </section>
+
+    <div class="toast" id="toast" role="status"></div>
+    <div class="bottom-brand">A QUIET LITTLE WORLD <span>✳</span> MADE TO WANDER</div>
+  </main>
+  <script type="module" src="game.js"></script>
+</body>
+</html>
