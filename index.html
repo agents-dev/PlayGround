@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f6f5f1" />
+  <link rel="icon" href="data:," />
+  <title>Daymark — a little more clarity</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Daymark home"><span class="brand-mark">d.</span><span>daymark</span></a>
+      <div class="today"><span class="sun">✳</span><span id="today-label"></span></div>
+      <button class="icon-button" id="theme-toggle" aria-label="Toggle color theme" title="Toggle theme"><span aria-hidden="true">◐</span></button>
+    </header>
+
+    <section class="hero">
+      <div class="eyebrow"><span class="eyebrow-line"></span> YOUR SPACE TO FOCUS</div>
+      <h1>A little more <em>clarity.</em></h1>
+      <p class="hero-copy">Make room for what matters, one thing at a time.</p>
+    </section>
+
+    <section class="workspace" aria-label="Your tasks">
+      <div class="progress-card">
+        <div class="progress-top"><div><span class="progress-kicker">TODAY'S PROGRESS</span><div class="progress-count"><strong id="progress-number">0</strong><span>of <span id="total-number">0</span> tasks complete</span></div></div><div class="progress-percent" id="progress-percent">0%</div></div>
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+        <div class="progress-note" id="progress-note">Every small step counts. Start with one.</div>
+      </div>
+
+      <form class="add-form" id="add-form">
+        <span class="add-plus" aria-hidden="true">+</span>
+        <label class="visually-hidden" for="new-task">Add a task</label>
+        <input id="new-task" type="text" placeholder="What would you like to get done?" maxlength="160" autocomplete="off" />
+        <button type="submit">Add task <span aria-hidden="true">↗</span></button>
+      </form>
+
+      <div class="list-heading"><div><h2>Your tasks <span class="task-total" id="task-total">0</span></h2><p id="list-subtitle">A fresh start, whenever you need it.</p></div><button class="clear-button" id="clear-completed" hidden>Clear completed</button></div>
+      <div class="filters" role="group" aria-label="Filter tasks">
+        <button class="filter active" data-filter="all" aria-pressed="true">All <span id="count-all">0</span></button>
+        <button class="filter" data-filter="active" aria-pressed="false">In progress <span id="count-active">0</span></button>
+        <button class="filter" data-filter="completed" aria-pressed="false">Completed <span id="count-completed">0</span></button>
+      </div>
+      <ul class="task-list" id="task-list" aria-live="polite"></ul>
+      <div class="empty-state" id="empty-state"><div class="empty-icon">✳</div><strong id="empty-title">Nothing on your list yet</strong><span id="empty-copy">Add a task above and give your day a little direction.</span></div>
+      <footer class="list-footer"><span><span class="footer-spark">✳</span> One thing at a time.</span><span>Saved automatically <span class="save-dot"></span></span></footer>
+    </section>
+    <p class="bottom-note">A calmer way to get things done.</p>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
