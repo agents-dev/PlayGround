@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Composio Connection Validation</title>
+<style>
+body{font-family:system-ui,sans-serif;text-align:center;background:#0f172a;color:#e2e8f0;margin:0;padding:24px}
+#board{position:relative;width:320px;height:320px;margin:16px auto;background:#1e293b;border-radius:12px;overflow:hidden}
+#target{position:absolute;width:48px;height:48px;border-radius:50%;border:0;background:#22c55e;cursor:pointer;font-weight:700}
+#target:active{transform:scale(.92)}
+.panel{display:flex;gap:12px;justify-content:center;align-items:center;margin:12px}
+button{padding:8px 16px;border-radius:8px;border:0;cursor:pointer}
+#restart{background:#38bdf8}
+#status{background:#020617;border:1px solid #334155;border-radius:8px;padding:8px 12px;display:inline-block;margin:8px}
+</style>
+</head>
+<body>
+<h1>Composio Connection Validation</h1>
+<div id="status">Composio connection successfully validated</div>
+<div class="panel">
+<div>Score: <span id="score">0</span></div>
+<button id="restart">Restart</button>
+</div>
+<div id="board">
+<button id="target" aria-label="target">Hit</button>
+</div>
+<p>Click the green target to score.</p>
+<script>
+let score=0;
+const scoreEl=document.getElementById('score');
+const board=document.getElementById('board');
+const target=document.getElementById('target');
+function move(){
+const max=320-48;
+target.style.left=Math.floor(Math.random()*max)+'px';
+target.style.top=Math.floor(Math.random()*max)+'px';
+}
+target.addEventListener('click',()=>{
+score++;
+scoreEl.textContent=score;
+move();
+});
+document.getElementById('restart').addEventListener('click',()=>{
+score=0;
+scoreEl.textContent='0';
+move();
+});
+move();
+</script>
+</body>
+</html>
