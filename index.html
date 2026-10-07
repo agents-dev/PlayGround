@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SKI TRIBES — 3D FPS</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js" } }
+</script>
+</head>
+<body>
+<div id="app"></div>
+
+<div id="hud" class="hidden">
+  <div id="crosshair"><span></span><span></span><span></span><span></span><i></i></div>
+  <div id="hitmarker"></div>
+  <div id="msg"></div>
+  <div id="flag-status"></div>
+  <div id="score"><b id="caps">0</b> CAPS &nbsp;·&nbsp; <b id="kills">0</b> KILLS &nbsp;·&nbsp; <b id="deaths">0</b> DEATHS</div>
+  <div id="speed"><b id="speed-val">0</b><small> km/h</small></div>
+  <div id="bars">
+    <div class="bar"><label>HEALTH</label><div class="track"><div id="health-fill"></div></div></div>
+    <div class="bar"><label>ENERGY</label><div class="track"><div id="energy-fill"></div></div></div>
+  </div>
+  <div id="controls-hint">
+    <b>WASD</b> move · <b>SPACE hold</b> ski / tap jump · <b>RMB / SHIFT</b> jetpack · <b>LMB</b> spinfusor
+  </div>
+</div>
+
+<div id="menu">
+  <div class="panel">
+    <h1>SKI <span>TRIBES</span></h1>
+    <p class="sub">A Tribes-inspired 3D FPS prototype — skiing, jetpacks, spinfusor, capture the flag.</p>
+    <div class="howto">
+      <div><b>WASD</b><span>Move</span></div>
+      <div><b>SPACE (hold)</b><span>Ski — frictionless, gain speed downhill</span></div>
+      <div><b>SPACE (tap)</b><span>Jump</span></div>
+      <div><b>RMB / SHIFT</b><span>Jetpack (uses energy)</span></div>
+      <div><b>LEFT MOUSE</b><span>Spinfusor disc — splash damage, try a disc-jump at your feet</span></div>
+      <div><b>OBJECTIVE</b><span>Steal the <em class="red">red flag</em>, return it to your <em class="blue">blue stand</em>. Drones defend.</span></div>
+    </div>
+    <button id="play">CLICK TO PLAY</button>
+    <p class="fine">Mouse look requires pointer lock · ESC to release</p>
+  </div>
+</div>
+
+<div id="death" class="hidden">
+  <div class="panel">
+    <h2>YOU WERE SHOT DOWN</h2>
+    <p id="death-info"></p>
+    <p class="fine">Respawning…</p>
+  </div>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #0b1620; }
+body { font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #d7f2ff; }
+#app, #app canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+.hidden { display: none !important; }
+
+/* ---------- HUD ---------- */
+#hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+
+#crosshair { position: absolute; left: 50%; top: 50%; width: 24px; height: 24px; transform: translate(-50%, -50%); }
+#crosshair span { position: absolute; background: rgba(150, 240, 255, .9); box-shadow: 0 0 4px rgba(80, 220, 255, .8); }
+#crosshair span:nth-child(1) { left: 11px; top: 0;    width: 2px; height: 7px; }
+#crosshair span:nth-child(2) { left: 11px; bottom: 0; width: 2px; height: 7px; }
+#crosshair span:nth-child(3) { top: 11px; left: 0;    height: 2px; width: 7px; }
+#crosshair span:nth-child(4) { top: 11px; right: 0;   height: 2px; width: 7px; }
+#crosshair i { position: absolute; left: 11px; top: 11px; width: 2px; height: 2px; background: #fff; }
+
+#hitmarker { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; transform: translate(-50%, -50%) rotate(45deg); opacity: 0; transition: opacity .25s; }
+#hitmarker::before, #hitmarker::after { content: ""; position: absolute; background: #ffd34d; }
+#hitmarker::before { left: 12px; top: 0; width: 2px; height: 26px; }
+#hitmarker::after  { top: 12px; left: 0; height: 2px; width: 26px; }
+#hitmarker.show { opacity: 1; transition: none; }
+
+#msg { position: absolute; top: 18%; width: 100%; text-align: center; font-size: 30px; font-weight: 800; letter-spacing: 2px; text-shadow: 0 0 12px rgba(90, 220, 255, .9), 0 2px 4px #000; opacity: 0; transition: opacity .3s; }
+#msg.show { opacity: 1; }
+#flag-status { position: absolute; top: 12%; width: 100%; text-align: center; font-size: 17px; font-weight: 700; letter-spacing: 1px; color: #ff9a7a; text-shadow: 0 1px 3px #000; }
+
+#score { position: absolute; top: 14px; right: 18px; font-size: 15px; letter-spacing: 1px; background: rgba(5, 25, 40, .55); border: 1px solid rgba(110, 220, 255, .35); padding: 8px 14px; border-radius: 6px; }
+#score b { color: #7ce8ff; font-size: 17px; }
+
+#speed { position: absolute; bottom: 90px; width: 100%; text-align: center; font-size: 15px; color: #a9e8ff; text-shadow: 0 1px 3px #000; }
+#speed b { font-size: 44px; font-weight: 800; color: #fff; }
+#speed.fast b { color: #8dffb0; text-shadow: 0 0 14px rgba(120, 255, 160, .8); }
+
+#bars { position: absolute; left: 22px; bottom: 22px; width: 240px; display: flex; flex-direction: column; gap: 8px; }
+.bar label { font-size: 10px; letter-spacing: 2px; color: #8fd8f0; }
+.bar .track { height: 12px; background: rgba(6, 26, 42, .7); border: 1px solid rgba(110, 220, 255, .35); border-radius: 3px; overflow: hidden; }
+#health-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #19d67c, #7dffb8); transition: width .15s; }
+#health-fill.low { background: linear-gradient(90deg, #e5484d, #ff8a7a); }
+#energy-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #1fa8e0, #7ce8ff); transition: width .1s; }
+
+#controls-hint { position: absolute; bottom: 16px; width: 100%; text-align: center; font-size: 12px; color: rgba(180, 230, 250, .6); text-shadow: 0 1px 2px #000; }
+#controls-hint b { color: rgba(220, 245, 255, .9); }
+
+/* ---------- Menus ---------- */
+#menu, #death { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at 50% 35%, rgba(20, 60, 90, .88), rgba(4, 12, 20, .96)); }
+#menu .panel, #death .panel { max-width: 620px; padding: 42px 48px; text-align: center; border: 1px solid rgba(110, 220, 255, .3); border-radius: 12px; background: rgba(6, 22, 36, .75); box-shadow: 0 0 60px rgba(40, 160, 220, .25); }
+#menu h1 { font-size: 54px; font-weight: 900; letter-spacing: 6px; color: #fff; text-shadow: 0 0 24px rgba(90, 220, 255, .8); }
+#menu h1 span { color: #57d8ff; }
+#menu .sub { margin: 10px 0 26px; color: #a9d8ec; }
+.howto { text-align: left; display: flex; flex-direction: column; gap: 7px; margin-bottom: 28px; }
+.howto div { display: flex; gap: 14px; font-size: 14px; }
+.howto b { flex: 0 0 130px; color: #7ce8ff; text-align: right; }
+.howto span { color: #cfeeff; }
+.howto em.red { color: #ff7a66; font-style: normal; font-weight: 700; }
+.howto em.blue { color: #66b8ff; font-style: normal; font-weight: 700; }
+#play { pointer-events: auto; cursor: pointer; font-size: 20px; font-weight: 800; letter-spacing: 3px; color: #04202e; background: linear-gradient(180deg, #8ff0ff, #38c2ee); border: 0; border-radius: 8px; padding: 14px 44px; box-shadow: 0 0 26px rgba(90, 220, 255, .55); }
+#play:hover { filter: brightness(1.12); }
+.fine { margin-top: 16px; font-size: 12px; color: #7fa8bd; }
+#death h2 { font-size: 34px; color: #ff8a7a; letter-spacing: 3px; text-shadow: 0 0 18px rgba(255, 90, 70, .6); }
+#death p { margin-top: 10px; color: #d7f2ff; }

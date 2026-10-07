@@ -1,5 +1,21 @@
 # PlayGround
 
+## 🎿 SKI TRIBES — Tribes-inspired 3D FPS
+
+A browser FPS homage to *Starsiege: Tribes*: skiing, jetpacks, spinfusor discs, and capture-the-flag against patrol drones. Built with Three.js, no build step — open `index.html` (or serve the folder statically).
+
+| Input | Action |
+| --- | --- |
+| **WASD** | Move |
+| **SPACE (hold)** | Ski — frictionless, gain speed downhill |
+| **SPACE (tap)** | Jump |
+| **RMB / SHIFT** | Jetpack (drains energy) |
+| **LMB** | Spinfusor disc — splash damage; fire at your feet to disc-jump |
+
+**Objective:** steal the red flag from the east base and return it to your blue stand in the west. Drones defend.
+
+Run locally: `python3 -m http.server 3002` then open `http://localhost:3002`.
+
 <!-- omgithub:readme:start -->
 ## 🚀 Build, play, and remix with OMGithub
 
