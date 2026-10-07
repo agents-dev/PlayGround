@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <meta name="theme-color" content="#0a1420" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23061420'/%3E%3Cpath d='M16 4l9 8-9 16-9-16z' fill='%2346b6ff'/%3E%3C/svg%3E" />
+    <title>SKYFALL — Tribes Arena FPS</title>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene"></canvas>
+
+      <div id="vignette"></div>
+      <div id="damage-flash"></div>
+
+      <div id="hud" class="hidden">
+        <div id="crosshair">
+          <span class="ch-dot"></span>
+          <span class="ch-line ch-n"></span>
+          <span class="ch-line ch-s"></span>
+          <span class="ch-line ch-e"></span>
+          <span class="ch-line ch-w"></span>
+        </div>
+
+        <div id="hitmarker"><span></span><span></span><span></span><span></span></div>
+
+        <div id="topbar">
+          <div class="team-score team-blue"><span class="badge">◎</span><b id="score-blue">0</b></div>
+          <div id="objective">FIRST TO <b>15</b></div>
+          <div class="team-score team-red"><b id="score-red">0</b><span class="badge">◎</span></div>
+        </div>
+
+        <div id="killfeed"></div>
+
+        <div id="bottombar">
+          <div class="stat-block">
+            <div class="stat-label">HEALTH</div>
+            <div class="bar"><div id="health-fill" class="bar-fill health"></div></div>
+            <div id="health-value" class="stat-value">100</div>
+          </div>
+          <div id="weapon-card">
+            <div id="weapon-name">SPINFUSOR</div>
+            <div id="weapon-ammo"><b id="ammo-mag">6</b><span id="ammo-reserve">/ 24</span></div>
+          </div>
+          <div class="stat-block right">
+            <div class="stat-label">ENERGY</div>
+            <div class="bar"><div id="energy-fill" class="bar-fill energy"></div></div>
+            <div id="energy-value" class="stat-value">100</div>
+          </div>
+        </div>
+
+        <div id="speedo"><span id="speed-value">0</span><small>KPH</small></div>
+        <div id="ski-indicator">SKIING</div>
+        <div id="reload-hint" class="hidden">PRESS <b>R</b> TO RELOAD</div>
+
+        <div id="vehicle-panel" class="hidden">
+          <div id="vehicle-name">TANK</div>
+          <div class="bar vehicle-bar"><div id="vehicle-health-fill" class="bar-fill vehicle"></div></div>
+          <div id="vehicle-hint">MOUSE AIM · LMB FIRE · <b>E</b> EXIT</div>
+        </div>
+
+        <div id="enter-prompt" class="hidden">PRESS <b>E</b> TO BOARD <span id="enter-name">TANK</span></div>
+        <div id="toast"></div>
+      </div>
+
+      <div id="menu" class="screen">
+        <div class="menu-bg"></div>
+        <div class="menu-inner">
+          <div class="brand">
+            <div class="brand-kicker">TRIBE COMBAT SIMULATION</div>
+            <h1>SKY<span>FALL</span></h1>
+            <div class="brand-sub">Jet. Ski. Rain fire from above.</div>
+          </div>
+          <div class="menu-grid">
+            <div class="panel controls">
+              <h2>CONTROLS</h2>
+              <ul>
+                <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>Move</span></li>
+                <li><kbd>SPACE</kbd><span>Jetpack</span></li>
+                <li><kbd>SHIFT</kbd><span>Ski (hold downhill)</span></li>
+                <li><kbd>MOUSE</kbd><span>Aim</span></li>
+                <li><kbd>LMB</kbd><span>Fire</span></li>
+                <li><kbd>1</kbd><kbd>2</kbd><span>Switch weapon</span></li>
+                <li><kbd>R</kbd><span>Reload</span></li>
+                <li><kbd>E</kbd><span>Enter / exit vehicle</span></li>
+                <li><kbd>LMB</kbd><span>Vehicle weapon</span></li>
+                <li><kbd>ESC</kbd><span>Pause</span></li>
+              </ul>
+            </div>
+            <div class="panel briefing">
+              <h2>BRIEFING</h2>
+              <p>Fight alongside your <b>AZURE</b> squad against the <b>CRIMSON</b> tribe across the frozen basin. Chain <b>jetpack</b> boosts with high-speed <b>ski</b> runs to cross the map and strike from above.</p>
+              <p class="hint">Commandeer <b>tanks</b>, <b>buggies</b> and <b>interceptors</b> parked at each base — press <b>E</b> to board. Steal the enemy flag to score.</p>
+            </div>
+          </div>
+          <div class="menu-actions">
+            <button id="play" class="primary" aria-label="Play">PLAY</button>
+            <button id="how" class="ghost" aria-label="How to play">HOW TO PLAY</button>
+          </div>
+          <div class="menu-foot">
+            <span id="load-status">READY</span>
+            <span class="sep">·</span>
+            <span>THREE.JS WEBGL</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="pause" class="screen hidden">
+        <div class="pause-inner">
+          <h2>PAUSED</h2>
+          <p>Link to the simulation is suspended.</p>
+          <button id="resume" class="primary" aria-label="Resume">RESUME</button>
+        </div>
+      </div>
+
+      <div id="loading" class="screen">
+        <div class="loader">
+          <div class="loader-title">DEPLOYING TO THE BASIN</div>
+          <div class="loader-bar"><div id="loader-fill"></div></div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

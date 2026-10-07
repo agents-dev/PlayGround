@@ -1,0 +1,19 @@
+{
+  "name": "skyfall-tribes",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Tribes-inspired jetpack-and-ski arena FPS built with Three.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.21.0",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "vite": "^5.4.11"
+  }
+}
