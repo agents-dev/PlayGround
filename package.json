@@ -1,0 +1,9 @@
+{
+  "name": "playground",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Static Three.js Rocket League demo; built to dist/ for serving.",
+  "scripts": {
+    "build": "node -e \"const fs=require('fs');fs.rmSync('dist',{recursive:true,force:true});fs.cpSync('rocket-league','dist',{recursive:true});if(!fs.existsSync('dist/index.html'))process.exit(1)\""
+  }
+}

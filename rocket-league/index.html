@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rocket League - Three.js</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; font-family: system-ui, sans-serif; color: #fff; }
+  canvas { display: block; }
+  #hud { position: fixed; inset: 0; pointer-events: none; }
+  #score { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 14px; align-items: center; background: rgba(0,0,0,.55); padding: 8px 18px; border-radius: 10px; font-weight: 700; font-size: 22px; }
+  .blue { color: #4aa8ff; }
+  .orange { color: #ffa040; }
+  #timer { min-width: 80px; text-align: center; font-size: 20px; }
+  #boostWrap { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 260px; }
+  #boostLabel { font-size: 14px; text-align: center; margin-bottom: 4px; }
+  #boostBar { height: 14px; background: rgba(255,255,255,.2); border-radius: 7px; overflow: hidden; }
+  #boostFill { height: 100%; width: 100%; background: linear-gradient(90deg, #ffd23f, #ff8a1e); }
+  #msg { position: absolute; top: 38%; left: 50%; transform: translate(-50%, -50%); font-size: 72px; font-weight: 900; text-shadow: 0 4px 18px #000; text-align: center; white-space: nowrap; }
+  #help { position: absolute; left: 12px; bottom: 12px; font-size: 13px; background: rgba(0,0,0,.5); padding: 8px 10px; border-radius: 8px; line-height: 1.5; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<div id="hud">
+  <div id="score">
+    <span class="blue">BLUE</span><span id="sb">0</span>
+    <span id="timer">5:00</span>
+    <span id="so">0</span><span class="orange">ORANGE</span>
+  </div>
+  <div id="boostWrap">
+    <div id="boostLabel">BOOST <span id="boostNum">33</span></div>
+    <div id="boostBar"><div id="boostFill"></div></div>
+  </div>
+  <div id="msg"></div>
+  <div id="help">W/S throttle &amp; brake · A/D steer · Shift boost · Space jump · Ctrl drift · R restart</div>
+</div>
+<script type="module" src="game.js"></script>
+</body>
+</html>
